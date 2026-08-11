@@ -56,6 +56,14 @@ const PAYMENT_METHODS = [
   "Other",
 ];
 
+const PART_STATUSES = [
+  "Needed",
+  "Ordered",
+  "Shipped",
+  "Received",
+  "Installed",
+];
+
 const emptyForm = {
   customer: "",
   phone: "",
@@ -82,12 +90,19 @@ const emptyForm = {
   checkIn: {},
   payments: [],
   timeline: [],
+  orderedParts: [],
   intakeDate: "",
   deliveryDate: "",
+  invoiceNumber: "",
+  reopened: false,
 };
 
 function nowString() {
   return new Date().toLocaleString();
+}
+
+function money(value) {
+  return Number(value || 0).toFixed(2);
 }
 
 function normalizeRepair(repair) {
@@ -95,17 +110,13 @@ function normalizeRepair(repair) {
     ? repair.payments
     : [];
 
-  /*
-    Convierte el depósito antiguo en el primer pago
-    para no perder dinero registrado anteriormente.
-  */
   if (
     payments.length === 0 &&
     Number(repair.deposit || 0) > 0
   ) {
     payments = [
       {
-        id: `PAY-${Date.now()}-${repair.id}`,
+        id: `PAY-OLD-${repair.id}`,
         amount: Number(repair.deposit),
         method: "Other",
         date: repair.intakeDate || "Previous payment",
@@ -135,8 +146,17 @@ function normalizeRepair(repair) {
     intakeDate: "",
     deliveryDate: "",
     timeline: [],
+    orderedParts: [],
+    invoiceNumber: "",
+    reopened: false,
     ...repair,
     payments,
+    orderedParts: Array.isArray(repair.orderedParts)
+      ? repair.orderedParts
+      : [],
+    timeline: Array.isArray(repair.timeline)
+      ? repair.timeline
+      : [],
     total,
     paid,
     balance: Math.max(total - paid, 0),
@@ -247,15 +267,15 @@ function paymentStatus(total, paid) {
   if (totalNumber === 0) return "No Charge";
   if (paidNumber <= 0) return "Unpaid";
   if (paidNumber >= totalNumber) return "Paid";
-
   return "Partial";
 }
 
 function App() {
   const [repairs, setRepairs] = useState(() => {
     try {
-      const saved =
-        localStorage.getItem("microtechusa_repairs");
+      const saved = localStorage.getItem(
+        "microtechusa_repairs"
+      );
 
       if (!saved) return [];
 
@@ -277,6 +297,12 @@ function App() {
   const [showEditModal, setShowEditModal] =
     useState(false);
 
+  const [showInvoice, setShowInvoice] =
+    useState(false);
+
+  const [showLabel, setShowLabel] =
+    useState(false);
+
   const [search, setSearch] = useState("");
 
   const [paymentForm, setPaymentForm] =
@@ -285,6 +311,14 @@ function App() {
       method: "Cash",
       note: "",
     });
+
+  const [partForm, setPartForm] = useState({
+    name: "",
+    supplier: "",
+    cost: "",
+    tracking: "",
+    status: "Needed",
+  });
 
   useEffect(() => {
     localStorage.setItem(
@@ -317,11 +351,9 @@ function App() {
         ...current,
         checkIn: {
           ...(current.checkIn || {}),
-          [item]:
-            !(current.checkIn || {})[item],
+          [item]: !(current.checkIn || {})[item],
         },
       }));
-
       return;
     }
 
@@ -329,8 +361,7 @@ function App() {
       ...current,
       checkIn: {
         ...(current.checkIn || {}),
-        [item]:
-          !(current.checkIn || {})[item],
+        [item]: !(current.checkIn || {})[item],
       },
     }));
   }
@@ -338,47 +369,48 @@ function App() {
   function getNextRepairId() {
     const numbers = repairs
       .map((repair) =>
-        Number(
-          String(repair.id).replace("MT-", "")
-        )
+        Number(String(repair.id).replace("MT-", ""))
       )
-      .filter(
-        (number) => !Number.isNaN(number)
-      );
+      .filter((number) => !Number.isNaN(number));
 
     const next =
       numbers.length > 0
         ? Math.max(...numbers) + 1
         : 1;
 
-    return `MT-${String(next).padStart(
-      6,
-      "0"
-    )}`;
+    return `MT-${String(next).padStart(6, "0")}`;
+  }
+
+  function getNextInvoiceNumber() {
+    const numbers = repairs
+      .map((repair) => repair.invoiceNumber)
+      .filter(Boolean)
+      .map((invoice) =>
+        Number(String(invoice).replace("INV-", ""))
+      )
+      .filter((number) => !Number.isNaN(number));
+
+    const next =
+      numbers.length > 0
+        ? Math.max(...numbers) + 1
+        : 1;
+
+    return `INV-${String(next).padStart(6, "0")}`;
   }
 
   function createRepair(event) {
     event.preventDefault();
 
-    if (
-      !form.customer ||
-      !form.model ||
-      !form.issue
-    ) {
+    if (!form.customer || !form.model || !form.issue) {
       alert(
         "Please complete Customer, Model and Issue."
       );
       return;
     }
 
-    const partsCost =
-      Number(form.partsCost) || 0;
-
-    const labor =
-      Number(form.labor) || 0;
-
+    const partsCost = Number(form.partsCost) || 0;
+    const labor = Number(form.labor) || 0;
     const total = partsCost + labor;
-
     const intakeDate = nowString();
 
     const newRepair = {
@@ -390,6 +422,8 @@ function App() {
       paid: 0,
       balance: total,
       payments: [],
+      orderedParts: [],
+      invoiceNumber: "",
       intakeDate,
       deliveryDate: "",
       timeline: [
@@ -422,19 +456,24 @@ function App() {
       note: "",
     });
 
+    setPartForm({
+      name: "",
+      supplier: "",
+      cost: "",
+      tracking: "",
+      status: "Needed",
+    });
+
     setShowEditModal(true);
   }
 
   function addPayment() {
     if (!editForm) return;
 
-    const amount =
-      Number(paymentForm.amount) || 0;
+    const amount = Number(paymentForm.amount) || 0;
 
     if (amount <= 0) {
-      alert(
-        "Enter a valid payment amount."
-      );
+      alert("Enter a valid payment amount.");
       return;
     }
 
@@ -463,21 +502,7 @@ function App() {
       Number(editForm.partsCost || 0) +
       Number(editForm.labor || 0);
 
-    const balance = Math.max(
-      total - paid,
-      0
-    );
-
-    const timeline = [
-      ...(editForm.timeline || []),
-      {
-        id: `TIME-${Date.now()}-payment`,
-        date,
-        text: `Payment received: $${amount.toFixed(
-          2
-        )} - ${paymentForm.method}`,
-      },
-    ];
+    const balance = Math.max(total - paid, 0);
 
     setEditForm((current) => ({
       ...current,
@@ -485,7 +510,16 @@ function App() {
       paid,
       total,
       balance,
-      timeline,
+      timeline: [
+        ...(current.timeline || []),
+        {
+          id: `TIME-${Date.now()}-payment`,
+          date,
+          text: `Payment received: $${amount.toFixed(
+            2
+          )} - ${paymentForm.method}`,
+        },
+      ],
     }));
 
     setPaymentForm({
@@ -495,14 +529,78 @@ function App() {
     });
   }
 
+  function addPart() {
+    if (!editForm) return;
+
+    if (!partForm.name.trim()) {
+      alert("Enter the part name.");
+      return;
+    }
+
+    const date = nowString();
+
+    const newPart = {
+      id: `PART-${Date.now()}`,
+      name: partForm.name,
+      supplier: partForm.supplier,
+      cost: Number(partForm.cost) || 0,
+      tracking: partForm.tracking,
+      status: partForm.status,
+      date,
+    };
+
+    setEditForm((current) => ({
+      ...current,
+      orderedParts: [
+        ...(current.orderedParts || []),
+        newPart,
+      ],
+      timeline: [
+        ...(current.timeline || []),
+        {
+          id: `TIME-${Date.now()}-part`,
+          date,
+          text: `Part added: ${newPart.name} - ${newPart.status}`,
+        },
+      ],
+    }));
+
+    setPartForm({
+      name: "",
+      supplier: "",
+      cost: "",
+      tracking: "",
+      status: "Needed",
+    });
+  }
+
+  function changePartStatus(partId, status) {
+    setEditForm((current) => ({
+      ...current,
+      orderedParts: current.orderedParts.map(
+        (part) =>
+          part.id === partId
+            ? { ...part, status }
+            : part
+      ),
+      timeline: [
+        ...(current.timeline || []),
+        {
+          id: `TIME-${Date.now()}-part-status`,
+          date: nowString(),
+          text: `Part status changed to ${status}`,
+        },
+      ],
+    }));
+  }
+
   function saveRepairChanges(event) {
     event.preventDefault();
 
     if (!editForm) return;
 
     const original = repairs.find(
-      (repair) =>
-        repair.id === editForm.id
+      (repair) => repair.id === editForm.id
     );
 
     const partsCost =
@@ -511,26 +609,17 @@ function App() {
     const labor =
       Number(editForm.labor) || 0;
 
-    const total =
-      partsCost + labor;
+    const total = partsCost + labor;
 
-    const paid = (
-      editForm.payments || []
-    ).reduce(
+    const paid = (editForm.payments || []).reduce(
       (sum, payment) =>
-        sum +
-        Number(payment.amount || 0),
+        sum + Number(payment.amount || 0),
       0
     );
 
-    const balance = Math.max(
-      total - paid,
-      0
-    );
+    const balance = Math.max(total - paid, 0);
 
-    let timeline = [
-      ...(editForm.timeline || []),
-    ];
+    let timeline = [...(editForm.timeline || [])];
 
     if (
       original &&
@@ -578,38 +667,131 @@ function App() {
       )
     );
 
-    setEditForm(null);
-    setShowEditModal(false);
+    setEditForm(updated);
   }
 
-  const activeRepairs =
-    repairs.filter(
-      (repair) =>
-        repair.status !== "Completed"
-    ).length;
+  function generateInvoice() {
+    if (!editForm) return;
 
-  const readyRepairs =
-    repairs.filter(
-      (repair) =>
-        repair.status === "Ready"
-    ).length;
+    let updated = { ...editForm };
 
-  const completedRepairs =
-    repairs.filter(
-      (repair) =>
-        repair.status === "Completed"
-    ).length;
+    if (!updated.invoiceNumber) {
+      updated.invoiceNumber =
+        getNextInvoiceNumber();
 
-  const balanceDue =
-    repairs.reduce(
-      (sum, repair) =>
-        sum +
-        Number(repair.balance || 0),
-      0
-    );
+      updated.timeline = [
+        ...(updated.timeline || []),
+        {
+          id: `TIME-${Date.now()}-invoice`,
+          date: nowString(),
+          text: `Invoice created: ${updated.invoiceNumber}`,
+        },
+      ];
 
-  const filteredRepairs =
-    repairs.filter((repair) => {
+      setEditForm(updated);
+
+      setRepairs((current) =>
+        current.map((repair) =>
+          repair.id === updated.id
+            ? updated
+            : repair
+        )
+      );
+    }
+
+    setShowInvoice(true);
+  }
+
+  function duplicateRepair() {
+    if (!editForm) return;
+
+    const intakeDate = nowString();
+
+    const duplicate = {
+      ...emptyForm,
+      customer: editForm.customer,
+      phone: editForm.phone,
+      deviceType: editForm.deviceType,
+      brand: editForm.brand,
+      model: editForm.model,
+      serial: editForm.serial,
+      passcode: editForm.passcode,
+      accessories: editForm.accessories,
+      condition: editForm.condition,
+      technician: editForm.technician,
+      id: getNextRepairId(),
+      intakeDate,
+      timeline: [
+        {
+          id: `TIME-${Date.now()}-duplicate`,
+          date: intakeDate,
+          text: `New repair duplicated from ${editForm.id}`,
+        },
+      ],
+      total: 0,
+      paid: 0,
+      balance: 0,
+    };
+
+    setRepairs((current) => [
+      duplicate,
+      ...current,
+    ]);
+
+    setShowEditModal(false);
+    setEditForm(null);
+  }
+
+  function reopenRepair() {
+    if (!editForm) return;
+
+    const date = nowString();
+
+    setEditForm((current) => ({
+      ...current,
+      status: "Received",
+      deliveryDate: "",
+      reopened: true,
+      timeline: [
+        ...(current.timeline || []),
+        {
+          id: `TIME-${Date.now()}-reopen`,
+          date,
+          text: "Repair reopened",
+        },
+      ],
+    }));
+  }
+
+  const customerHistory = editForm
+    ? repairs.filter(
+        (repair) =>
+          repair.id !== editForm.id &&
+          repair.phone &&
+          repair.phone === editForm.phone
+      )
+    : [];
+
+  const activeRepairs = repairs.filter(
+    (repair) => repair.status !== "Completed"
+  ).length;
+
+  const readyRepairs = repairs.filter(
+    (repair) => repair.status === "Ready"
+  ).length;
+
+  const completedRepairs = repairs.filter(
+    (repair) => repair.status === "Completed"
+  ).length;
+
+  const balanceDue = repairs.reduce(
+    (sum, repair) =>
+      sum + Number(repair.balance || 0),
+    0
+  );
+
+  const filteredRepairs = repairs.filter(
+    (repair) => {
       const text = `
         ${repair.id}
         ${repair.customer}
@@ -620,12 +802,12 @@ function App() {
         ${repair.issue}
         ${repair.status}
         ${repair.technician}
+        ${repair.invoiceNumber}
       `.toLowerCase();
 
-      return text.includes(
-        search.toLowerCase()
-      );
-    });
+      return text.includes(search.toLowerCase());
+    }
+  );
 
   function renderRepairFields(
     data,
@@ -663,9 +845,7 @@ function App() {
             onChange={onChange}
           >
             {DEVICE_TYPES.map((type) => (
-              <option key={type}>
-                {type}
-              </option>
+              <option key={type}>{type}</option>
             ))}
           </select>
         </div>
@@ -705,9 +885,7 @@ function App() {
             onChange={onChange}
           >
             {PRIORITIES.map((item) => (
-              <option key={item}>
-                {item}
-              </option>
+              <option key={item}>{item}</option>
             ))}
           </select>
         </div>
@@ -720,9 +898,7 @@ function App() {
             onChange={onChange}
           >
             {STATUSES.map((item) => (
-              <option key={item}>
-                {item}
-              </option>
+              <option key={item}>{item}</option>
             ))}
           </select>
         </div>
@@ -735,17 +911,13 @@ function App() {
             onChange={onChange}
           >
             {TECHNICIANS.map((item) => (
-              <option key={item}>
-                {item}
-              </option>
+              <option key={item}>{item}</option>
             ))}
           </select>
         </div>
 
         <div className="form-group">
-          <label>
-            Estimated Completion
-          </label>
+          <label>Estimated Completion</label>
           <input
             type="date"
             name="estimatedCompletion"
@@ -760,16 +932,12 @@ function App() {
           <label>Device Condition</label>
           <select
             name="condition"
-            value={
-              data.condition || "Good"
-            }
+            value={data.condition || "Good"}
             onChange={onChange}
           >
             <option>Good</option>
             <option>Cracked Screen</option>
-            <option>
-              Broken Back Glass
-            </option>
+            <option>Broken Back Glass</option>
             <option>Bent Frame</option>
             <option>Liquid Damage</option>
             <option>Heavy Damage</option>
@@ -778,21 +946,15 @@ function App() {
         </div>
 
         <div className="form-group">
-          <label>
-            Customer Approval
-          </label>
+          <label>Customer Approval</label>
           <select
             name="approval"
             value={data.approval}
             onChange={onChange}
           >
-            {APPROVAL_OPTIONS.map(
-              (item) => (
-                <option key={item}>
-                  {item}
-                </option>
-              )
-            )}
+            {APPROVAL_OPTIONS.map((item) => (
+              <option key={item}>{item}</option>
+            ))}
           </select>
         </div>
 
@@ -803,13 +965,9 @@ function App() {
             value={data.warranty}
             onChange={onChange}
           >
-            {WARRANTY_OPTIONS.map(
-              (item) => (
-                <option key={item}>
-                  {item}
-                </option>
-              )
-            )}
+            {WARRANTY_OPTIONS.map((item) => (
+              <option key={item}>{item}</option>
+            ))}
           </select>
         </div>
 
@@ -823,14 +981,10 @@ function App() {
         </div>
 
         <div className="form-group full-width">
-          <label>
-            Accessories Received
-          </label>
+          <label>Accessories Received</label>
           <input
             name="accessories"
-            value={
-              data.accessories || ""
-            }
+            value={data.accessories || ""}
             onChange={onChange}
           />
         </div>
@@ -849,9 +1003,7 @@ function App() {
           <label>Diagnosis</label>
           <textarea
             name="diagnosis"
-            value={
-              data.diagnosis || ""
-            }
+            value={data.diagnosis || ""}
             onChange={onChange}
             rows="3"
           />
@@ -861,9 +1013,7 @@ function App() {
           <label>Parts Needed</label>
           <textarea
             name="partsNeeded"
-            value={
-              data.partsNeeded || ""
-            }
+            value={data.partsNeeded || ""}
             onChange={onChange}
             rows="2"
           />
@@ -875,9 +1025,7 @@ function App() {
           </label>
           <textarea
             name="internalNotes"
-            value={
-              data.internalNotes || ""
-            }
+            value={data.internalNotes || ""}
             onChange={onChange}
             rows="3"
           />
@@ -887,9 +1035,7 @@ function App() {
           <label>Customer Notes</label>
           <textarea
             name="customerNotes"
-            value={
-              data.customerNotes || ""
-            }
+            value={data.customerNotes || ""}
             onChange={onChange}
             rows="3"
           />
@@ -910,13 +1056,9 @@ function App() {
                     data.checkIn?.[item]
                   )}
                   onChange={() =>
-                    toggleCheckIn(
-                      item,
-                      editing
-                    )
+                    toggleCheckIn(item, editing)
                   }
                 />
-
                 <span>{item}</span>
               </label>
             ))}
@@ -929,9 +1071,7 @@ function App() {
             type="number"
             step="0.01"
             name="partsCost"
-            value={
-              data.partsCost ?? ""
-            }
+            value={data.partsCost ?? ""}
             onChange={onChange}
           />
         </div>
@@ -958,8 +1098,7 @@ function App() {
     editForm?.payments || []
   ).reduce(
     (sum, payment) =>
-      sum +
-      Number(payment.amount || 0),
+      sum + Number(payment.amount || 0),
     0
   );
 
@@ -976,15 +1115,11 @@ function App() {
     <div className="app">
       <aside className="sidebar">
         <div className="brand">
-          <div className="brand-logo">
-            M
-          </div>
+          <div className="brand-logo">M</div>
 
           <div>
             <h2>MicrotechUSA</h2>
-            <span>
-              Repair Management
-            </span>
+            <span>Repair Management</span>
           </div>
         </div>
 
@@ -1021,10 +1156,12 @@ function App() {
             <p className="eyebrow">
               Repair Center
             </p>
+
             <h1>Dashboard</h1>
+
             <p className="subtitle">
-              Manage repairs, customers
-              and payments.
+              Manage repairs, customers and
+              payments.
             </p>
           </div>
 
@@ -1044,13 +1181,9 @@ function App() {
               <span className="stat-label">
                 Active Repairs
               </span>
-              <strong>
-                {activeRepairs}
-              </strong>
+              <strong>{activeRepairs}</strong>
             </div>
-            <div className="stat-icon">
-              🔧
-            </div>
+            <div className="stat-icon">🔧</div>
           </div>
 
           <div className="stat-card">
@@ -1058,13 +1191,9 @@ function App() {
               <span className="stat-label">
                 Ready
               </span>
-              <strong>
-                {readyRepairs}
-              </strong>
+              <strong>{readyRepairs}</strong>
             </div>
-            <div className="stat-icon">
-              ✅
-            </div>
+            <div className="stat-icon">✅</div>
           </div>
 
           <div className="stat-card">
@@ -1076,9 +1205,7 @@ function App() {
                 {completedRepairs}
               </strong>
             </div>
-            <div className="stat-icon">
-              📦
-            </div>
+            <div className="stat-icon">📦</div>
           </div>
 
           <div className="stat-card">
@@ -1087,12 +1214,10 @@ function App() {
                 Balance Due
               </span>
               <strong>
-                ${balanceDue.toFixed(2)}
+                ${money(balanceDue)}
               </strong>
             </div>
-            <div className="stat-icon">
-              💵
-            </div>
+            <div className="stat-icon">💵</div>
           </div>
         </section>
 
@@ -1101,8 +1226,8 @@ function App() {
             <div>
               <h2>Recent Repairs</h2>
               <p>
-                Latest repair tickets
-                in your shop.
+                Latest repair tickets in your
+                shop.
               </p>
             </div>
 
@@ -1112,9 +1237,7 @@ function App() {
                 placeholder="Search repair..."
                 value={search}
                 onChange={(event) =>
-                  setSearch(
-                    event.target.value
-                  )
+                  setSearch(event.target.value)
                 }
               />
             </div>
@@ -1171,33 +1294,22 @@ function App() {
                       </td>
 
                       <td className="balance">
-                        $
-                        {Number(
-                          repair.total || 0
-                        ).toFixed(2)}
+                        ${money(repair.total)}
                       </td>
 
                       <td>
-                        $
-                        {Number(
-                          repair.paid || 0
-                        ).toFixed(2)}
+                        ${money(repair.paid)}
                       </td>
 
                       <td className="balance">
-                        $
-                        {Number(
-                          repair.balance || 0
-                        ).toFixed(2)}
+                        ${money(repair.balance)}
                       </td>
 
                       <td>
                         <button
                           className="table-btn"
                           onClick={() =>
-                            openRepair(
-                              repair
-                            )
+                            openRepair(repair)
                           }
                         >
                           Open
@@ -1244,7 +1356,7 @@ function App() {
                 <div>
                   <span>Total</span>
                   <strong>
-                    ${formTotal.toFixed(2)}
+                    ${money(formTotal)}
                   </strong>
                 </div>
 
@@ -1256,7 +1368,7 @@ function App() {
                 <div className="balance-total">
                   <span>Balance Due</span>
                   <strong>
-                    ${formTotal.toFixed(2)}
+                    ${money(formTotal)}
                   </strong>
                 </div>
               </div>
@@ -1292,7 +1404,9 @@ function App() {
                 <p className="eyebrow">
                   Repair Ticket
                 </p>
+
                 <h2>{editForm.id}</h2>
+
                 <p className="small-text">
                   {editForm.customer} ·{" "}
                   {editForm.deviceType} ·{" "}
@@ -1311,16 +1425,46 @@ function App() {
               </button>
             </div>
 
-            <form
-              onSubmit={
-                saveRepairChanges
-              }
-            >
+            <div className="ticket-actions">
+              <button
+                type="button"
+                className="secondary-btn"
+                onClick={generateInvoice}
+              >
+                🧾 Invoice
+              </button>
+
+              <button
+                type="button"
+                className="secondary-btn"
+                onClick={() =>
+                  setShowLabel(true)
+                }
+              >
+                🏷️ Print Label
+              </button>
+
+              <button
+                type="button"
+                className="secondary-btn"
+                onClick={duplicateRepair}
+              >
+                📋 Duplicate
+              </button>
+
+              <button
+                type="button"
+                className="secondary-btn"
+                onClick={reopenRepair}
+              >
+                🔄 Reopen
+              </button>
+            </div>
+
+            <form onSubmit={saveRepairChanges}>
               <div className="ticket-dates">
                 <div>
-                  <span>
-                    Check-In Date
-                  </span>
+                  <span>Check-In Date</span>
                   <strong>
                     {editForm.intakeDate ||
                       "Previous ticket"}
@@ -1328,12 +1472,18 @@ function App() {
                 </div>
 
                 <div>
-                  <span>
-                    Delivery Date
-                  </span>
+                  <span>Delivery Date</span>
                   <strong>
                     {editForm.deliveryDate ||
                       "Not delivered"}
+                  </strong>
+                </div>
+
+                <div>
+                  <span>Invoice #</span>
+                  <strong>
+                    {editForm.invoiceNumber ||
+                      "Not created"}
                   </strong>
                 </div>
               </div>
@@ -1348,14 +1498,14 @@ function App() {
                 <div>
                   <span>Total</span>
                   <strong>
-                    ${editTotal.toFixed(2)}
+                    ${money(editTotal)}
                   </strong>
                 </div>
 
                 <div>
                   <span>Total Paid</span>
                   <strong>
-                    ${editPaid.toFixed(2)}
+                    ${money(editPaid)}
                   </strong>
                 </div>
 
@@ -1372,58 +1522,48 @@ function App() {
                 </div>
 
                 <div className="balance-total">
-                  <span>
-                    Balance Due
-                  </span>
+                  <span>Balance Due</span>
                   <strong>
-                    ${editBalance.toFixed(2)}
+                    ${money(editBalance)}
                   </strong>
                 </div>
               </div>
 
               <div className="repair-module">
-                <h3>💳 Add Payment</h3>
+                <h3>💳 Payments</h3>
 
                 <div className="payment-entry">
                   <input
                     type="number"
                     step="0.01"
                     placeholder="Amount"
-                    value={
-                      paymentForm.amount
-                    }
+                    value={paymentForm.amount}
                     onChange={(event) =>
                       setPaymentForm(
                         (current) => ({
                           ...current,
                           amount:
-                            event.target
-                              .value,
+                            event.target.value,
                         })
                       )
                     }
                   />
 
                   <select
-                    value={
-                      paymentForm.method
-                    }
+                    value={paymentForm.method}
                     onChange={(event) =>
                       setPaymentForm(
                         (current) => ({
                           ...current,
                           method:
-                            event.target
-                              .value,
+                            event.target.value,
                         })
                       )
                     }
                   >
                     {PAYMENT_METHODS.map(
                       (method) => (
-                        <option
-                          key={method}
-                        >
+                        <option key={method}>
                           {method}
                         </option>
                       )
@@ -1432,16 +1572,13 @@ function App() {
 
                   <input
                     placeholder="Payment note"
-                    value={
-                      paymentForm.note
-                    }
+                    value={paymentForm.note}
                     onChange={(event) =>
                       setPaymentForm(
                         (current) => ({
                           ...current,
                           note:
-                            event.target
-                              .value,
+                            event.target.value,
                         })
                       )
                     }
@@ -1458,14 +1595,7 @@ function App() {
 
                 <h4>Payment History</h4>
 
-                {editForm.payments
-                  ?.length === 0 && (
-                  <p className="small-text">
-                    No payments recorded.
-                  </p>
-                )}
-
-                {editForm.payments?.map(
+                {(editForm.payments || []).map(
                   (payment) => (
                     <div
                       className="history-row"
@@ -1473,15 +1603,10 @@ function App() {
                     >
                       <div>
                         <strong>
-                          $
-                          {Number(
-                            payment.amount
-                          ).toFixed(2)}
+                          ${money(payment.amount)}
                         </strong>
                         <span>
-                          {
-                            payment.method
-                          }
+                          {payment.method}
                         </span>
                       </div>
 
@@ -1489,7 +1614,6 @@ function App() {
                         <span>
                           {payment.date}
                         </span>
-
                         {payment.note && (
                           <small>
                             {payment.note}
@@ -1502,26 +1626,203 @@ function App() {
               </div>
 
               <div className="repair-module">
-                <h3>
-                  🕒 Repair Timeline
-                </h3>
+                <h3>📦 Parts Ordered</h3>
 
-                {editForm.timeline
-                  ?.length === 0 && (
+                <div className="parts-entry">
+                  <input
+                    placeholder="Part"
+                    value={partForm.name}
+                    onChange={(event) =>
+                      setPartForm(
+                        (current) => ({
+                          ...current,
+                          name:
+                            event.target.value,
+                        })
+                      )
+                    }
+                  />
+
+                  <input
+                    placeholder="Supplier"
+                    value={
+                      partForm.supplier
+                    }
+                    onChange={(event) =>
+                      setPartForm(
+                        (current) => ({
+                          ...current,
+                          supplier:
+                            event.target.value,
+                        })
+                      )
+                    }
+                  />
+
+                  <input
+                    type="number"
+                    step="0.01"
+                    placeholder="Cost"
+                    value={partForm.cost}
+                    onChange={(event) =>
+                      setPartForm(
+                        (current) => ({
+                          ...current,
+                          cost:
+                            event.target.value,
+                        })
+                      )
+                    }
+                  />
+
+                  <input
+                    placeholder="Tracking #"
+                    value={
+                      partForm.tracking
+                    }
+                    onChange={(event) =>
+                      setPartForm(
+                        (current) => ({
+                          ...current,
+                          tracking:
+                            event.target.value,
+                        })
+                      )
+                    }
+                  />
+
+                  <select
+                    value={partForm.status}
+                    onChange={(event) =>
+                      setPartForm(
+                        (current) => ({
+                          ...current,
+                          status:
+                            event.target.value,
+                        })
+                      )
+                    }
+                  >
+                    {PART_STATUSES.map(
+                      (status) => (
+                        <option key={status}>
+                          {status}
+                        </option>
+                      )
+                    )}
+                  </select>
+
+                  <button
+                    type="button"
+                    className="primary-btn"
+                    onClick={addPart}
+                  >
+                    + Add Part
+                  </button>
+                </div>
+
+                {(editForm.orderedParts || []).map(
+                  (part) => (
+                    <div
+                      className="part-row"
+                      key={part.id}
+                    >
+                      <div>
+                        <strong>
+                          {part.name}
+                        </strong>
+                        <span>
+                          {part.supplier ||
+                            "No supplier"}
+                        </span>
+                      </div>
+
+                      <div>
+                        <span>
+                          Cost: $
+                          {money(part.cost)}
+                        </span>
+                        <span>
+                          Tracking:{" "}
+                          {part.tracking ||
+                            "N/A"}
+                        </span>
+                      </div>
+
+                      <select
+                        value={part.status}
+                        onChange={(event) =>
+                          changePartStatus(
+                            part.id,
+                            event.target.value
+                          )
+                        }
+                      >
+                        {PART_STATUSES.map(
+                          (status) => (
+                            <option
+                              key={status}
+                            >
+                              {status}
+                            </option>
+                          )
+                        )}
+                      </select>
+                    </div>
+                  )
+                )}
+              </div>
+
+              <div className="repair-module">
+                <h3>👤 Customer History</h3>
+
+                {customerHistory.length ===
+                  0 && (
                   <p className="small-text">
-                    No timeline entries
-                    yet.
+                    No previous repairs found
+                    for this phone number.
                   </p>
                 )}
 
-                {editForm.timeline?.map(
+                {customerHistory.map(
+                  (repair) => (
+                    <div
+                      className="history-row"
+                      key={repair.id}
+                    >
+                      <div>
+                        <strong>
+                          {repair.id}
+                        </strong>
+                        <span>
+                          {repair.deviceType}{" "}
+                          {repair.model}
+                        </span>
+                      </div>
+
+                      <div>
+                        <span>
+                          {repair.status}
+                        </span>
+                        <strong>
+                          ${money(repair.total)}
+                        </strong>
+                      </div>
+                    </div>
+                  )
+                )}
+              </div>
+
+              <div className="repair-module">
+                <h3>🕒 Repair Timeline</h3>
+
+                {(editForm.timeline || []).map(
                   (entry) => (
                     <div
                       className="timeline-row"
                       key={entry.id}
                     >
                       <div className="timeline-dot" />
-
                       <div>
                         <strong>
                           {entry.text}
@@ -1544,7 +1845,7 @@ function App() {
                     setEditForm(null);
                   }}
                 >
-                  Cancel
+                  Close
                 </button>
 
                 <button
@@ -1555,6 +1856,168 @@ function App() {
                 </button>
               </div>
             </form>
+          </div>
+        </div>
+      )}
+
+      {showInvoice && editForm && (
+        <div className="modal-overlay">
+          <div className="invoice-modal">
+            <div className="invoice-sheet">
+              <div className="invoice-header">
+                <div>
+                  <h1>MicrotechUSA</h1>
+                  <p>Repair Center</p>
+                </div>
+
+                <div>
+                  <h2>INVOICE</h2>
+                  <strong>
+                    {editForm.invoiceNumber}
+                  </strong>
+                </div>
+              </div>
+
+              <hr />
+
+              <p>
+                <strong>Customer:</strong>{" "}
+                {editForm.customer}
+              </p>
+              <p>
+                <strong>Phone:</strong>{" "}
+                {editForm.phone}
+              </p>
+              <p>
+                <strong>Repair:</strong>{" "}
+                {editForm.id}
+              </p>
+              <p>
+                <strong>Device:</strong>{" "}
+                {editForm.brand}{" "}
+                {editForm.model}
+              </p>
+              <p>
+                <strong>Issue:</strong>{" "}
+                {editForm.issue}
+              </p>
+
+              <div className="invoice-totals">
+                <p>
+                  Parts: $
+                  {money(editForm.partsCost)}
+                </p>
+                <p>
+                  Labor: $
+                  {money(editForm.labor)}
+                </p>
+                <p>
+                  <strong>
+                    Total: $
+                    {money(editTotal)}
+                  </strong>
+                </p>
+                <p>
+                  Paid: ${money(editPaid)}
+                </p>
+                <p>
+                  <strong>
+                    Balance Due: $
+                    {money(editBalance)}
+                  </strong>
+                </p>
+              </div>
+
+              <p>
+                <strong>Warranty:</strong>{" "}
+                {editForm.warranty}
+              </p>
+
+              {editForm.customerNotes && (
+                <p>
+                  <strong>Notes:</strong>{" "}
+                  {editForm.customerNotes}
+                </p>
+              )}
+            </div>
+
+            <div className="modal-actions">
+              <button
+                className="secondary-btn"
+                onClick={() =>
+                  setShowInvoice(false)
+                }
+              >
+                Close
+              </button>
+
+              <button
+                className="primary-btn"
+                onClick={() => window.print()}
+              >
+                🖨️ Print Invoice
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {showLabel && editForm && (
+        <div className="modal-overlay">
+          <div className="label-modal">
+            <div className="device-label">
+              <div className="label-brand">
+                <strong>MICROTECHUSA</strong>
+                <span>REPAIR CENTER</span>
+              </div>
+
+              <div className="label-id">
+                {editForm.id}
+              </div>
+
+              <p>
+                <strong>Customer:</strong>{" "}
+                {editForm.customer}
+              </p>
+
+              <p>
+                <strong>Phone:</strong>{" "}
+                {editForm.phone}
+              </p>
+
+              <p>
+                <strong>Device:</strong>{" "}
+                {editForm.brand}{" "}
+                {editForm.model}
+              </p>
+
+              <p>
+                <strong>Issue:</strong>{" "}
+                {editForm.issue}
+              </p>
+
+              <small>
+                Keep this label with the device
+              </small>
+            </div>
+
+            <div className="modal-actions">
+              <button
+                className="secondary-btn"
+                onClick={() =>
+                  setShowLabel(false)
+                }
+              >
+                Close
+              </button>
+
+              <button
+                className="primary-btn"
+                onClick={() => window.print()}
+              >
+                🖨️ Print Label
+              </button>
+            </div>
           </div>
         </div>
       )}
