@@ -622,4 +622,112 @@ tbody tr:hover {
   .checkin-grid {
     grid-template-columns: 1fr;
   }
+}/* =================================
+   PAYMENTS / TIMELINE
+   ================================= */
+
+.ticket-dates {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 12px;
+  margin-bottom: 20px;
+}
+
+.ticket-dates > div {
+  padding: 14px;
+  background: #f8fafc;
+  border: 1px solid #e5e7eb;
+  border-radius: 10px;
+}
+
+.ticket-dates span {
+  display: block;
+  color: #64748b;
+  font-size: 12px;
+  margin-bottom: 5px;
+}
+
+.repair-module {
+  margin-top: 24px;
+  padding: 20px;
+  border: 1px solid #e5e7eb;
+  border-radius: 12px;
+  background: #f8fafc;
+}
+
+.repair-module h3 {
+  margin: 0 0 18px;
+}
+
+.repair-module h4 {
+  margin: 22px 0 12px;
+}
+
+.payment-entry {
+  display: grid;
+  grid-template-columns: 120px 150px 1fr auto;
+  gap: 10px;
+}
+
+.payment-entry input,
+.payment-entry select {
+  width: 100%;
+  padding: 10px;
+  border: 1px solid #d1d5db;
+  border-radius: 8px;
+}
+
+.history-row {
+  display: flex;
+  justify-content: space-between;
+  gap: 20px;
+  padding: 12px 0;
+  border-bottom: 1px solid #e5e7eb;
+}
+
+.history-row > div {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.history-row span,
+.history-row small {
+  color: #64748b;
+}
+
+.timeline-row {
+  display: flex;
+  gap: 12px;
+  padding: 10px 0;
+}
+
+.timeline-row > div:last-child {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+}
+
+.timeline-row span {
+  font-size: 12px;
+  color: #64748b;
+}
+
+.timeline-dot {
+  width: 10px;
+  height: 10px;
+  min-width: 10px;
+  margin-top: 5px;
+  border-radius: 50%;
+  background: #2563eb;
+}
+
+@media (max-width: 800px) {
+  .payment-entry {
+    grid-template-columns: 1fr;
+  }
+
+  .ticket-dates {
+    grid-template-columns: 1fr;
+  }
 }

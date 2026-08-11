@@ -1,102 +1,130 @@
 import { useEffect, useState } from "react";
 import "./App.css";
 
-function App() {
-  const deviceTypes = [
-    "iPhone",
-    "iPad",
-    "MacBook",
-    "Samsung",
-    "Android",
-    "PlayStation",
-    "Xbox",
-    "Nintendo Switch",
-    "Other",
-  ];
+const DEVICE_TYPES = [
+  "iPhone",
+  "iPad",
+  "MacBook",
+  "Samsung",
+  "Android",
+  "PlayStation",
+  "Xbox",
+  "Nintendo Switch",
+  "Other",
+];
 
-  const technicians = [
-    "Unassigned",
-    "Roberto",
-    "Technician 2",
-    "Technician 3",
-  ];
+const TECHNICIANS = [
+  "Unassigned",
+  "Roberto",
+  "Technician 2",
+  "Technician 3",
+];
 
-  const statuses = [
-    "Received",
-    "In Progress",
-    "Waiting for Parts",
-    "Ready",
-    "Completed",
-  ];
+const STATUSES = [
+  "Received",
+  "In Progress",
+  "Waiting for Parts",
+  "Ready",
+  "Completed",
+];
 
-  const priorities = ["Normal", "Rush", "Urgent"];
+const PRIORITIES = ["Normal", "Rush", "Urgent"];
 
-  const warrantyOptions = [
-    "No Warranty",
-    "30 Days",
-    "60 Days",
-    "90 Days",
-    "6 Months",
-    "1 Year",
-  ];
+const WARRANTY_OPTIONS = [
+  "No Warranty",
+  "30 Days",
+  "60 Days",
+  "90 Days",
+  "6 Months",
+  "1 Year",
+];
 
-  const approvalOptions = [
-    "Pending",
-    "Approved",
-    "Declined",
-    "Not Required",
-  ];
+const APPROVAL_OPTIONS = [
+  "Pending",
+  "Approved",
+  "Declined",
+  "Not Required",
+];
 
-  const defaultRepairs = [
-    {
-      id: "MT-000101",
-      customer: "Carlos Rivera",
-      phone: "954-555-0101",
-      deviceType: "iPhone",
-      brand: "Apple",
-      model: "iPhone 15 Pro Max",
-      serial: "",
-      issue: "No Power",
-      diagnosis: "",
-      accessories: "Case",
-      condition: "Good",
-      technician: "Roberto",
-      estimatedCompletion: "",
-      partsCost: 80,
-      labor: 170,
-      total: 250,
-      deposit: 70,
-      balance: 180,
-      passcode: "",
-      status: "In Progress",
-      priority: "Normal",
-      warranty: "90 Days",
-      approval: "Approved",
-      partsNeeded: "",
-      internalNotes: "",
-      customerNotes: "",
-      checkIn: {},
-    },
-  ];
+const PAYMENT_METHODS = [
+  "Cash",
+  "Card",
+  "Zelle",
+  "Cash App",
+  "Venmo",
+  "Apple Pay",
+  "Other",
+];
 
-  const emptyForm = {
-    customer: "",
-    phone: "",
-    deviceType: "iPhone",
-    brand: "",
-    model: "",
-    serial: "",
-    issue: "",
-    diagnosis: "",
-    accessories: "",
-    condition: "Good",
-    technician: "Unassigned",
-    estimatedCompletion: "",
-    partsCost: "",
-    labor: "",
-    deposit: "",
-    passcode: "",
-    status: "Received",
+const emptyForm = {
+  customer: "",
+  phone: "",
+  deviceType: "iPhone",
+  brand: "",
+  model: "",
+  serial: "",
+  issue: "",
+  diagnosis: "",
+  accessories: "",
+  condition: "Good",
+  technician: "Unassigned",
+  estimatedCompletion: "",
+  partsCost: "",
+  labor: "",
+  passcode: "",
+  status: "Received",
+  priority: "Normal",
+  warranty: "No Warranty",
+  approval: "Pending",
+  partsNeeded: "",
+  internalNotes: "",
+  customerNotes: "",
+  checkIn: {},
+  payments: [],
+  timeline: [],
+  intakeDate: "",
+  deliveryDate: "",
+};
+
+function nowString() {
+  return new Date().toLocaleString();
+}
+
+function normalizeRepair(repair) {
+  let payments = Array.isArray(repair.payments)
+    ? repair.payments
+    : [];
+
+  /*
+    Convierte el depósito antiguo en el primer pago
+    para no perder dinero registrado anteriormente.
+  */
+  if (
+    payments.length === 0 &&
+    Number(repair.deposit || 0) > 0
+  ) {
+    payments = [
+      {
+        id: `PAY-${Date.now()}-${repair.id}`,
+        amount: Number(repair.deposit),
+        method: "Other",
+        date: repair.intakeDate || "Previous payment",
+        note: "Imported from previous deposit",
+      },
+    ];
+  }
+
+  const total =
+    Number(repair.partsCost || 0) +
+    Number(repair.labor || 0);
+
+  const paid = payments.reduce(
+    (sum, payment) =>
+      sum + Number(payment.amount || 0),
+    0
+  );
+
+  return {
     priority: "Normal",
     warranty: "No Warranty",
     approval: "Pending",
@@ -104,40 +132,159 @@ function App() {
     internalNotes: "",
     customerNotes: "",
     checkIn: {},
+    intakeDate: "",
+    deliveryDate: "",
+    timeline: [],
+    ...repair,
+    payments,
+    total,
+    paid,
+    balance: Math.max(total - paid, 0),
   };
+}
 
+function getCheckItems(deviceType) {
+  if (
+    deviceType === "iPhone" ||
+    deviceType === "Samsung" ||
+    deviceType === "Android"
+  ) {
+    return [
+      "Screen",
+      "Touch",
+      "Charging",
+      "Battery",
+      "Front Camera",
+      "Rear Camera",
+      "Microphone",
+      "Speaker",
+      "Wi-Fi",
+      "Bluetooth",
+      "Buttons",
+      "Face ID / Biometrics",
+    ];
+  }
+
+  if (deviceType === "iPad") {
+    return [
+      "Screen",
+      "Touch",
+      "Charging",
+      "Battery",
+      "Front Camera",
+      "Rear Camera",
+      "Speaker",
+      "Microphone",
+      "Wi-Fi",
+      "Bluetooth",
+      "Buttons",
+    ];
+  }
+
+  if (deviceType === "MacBook") {
+    return [
+      "Display",
+      "Keyboard",
+      "Trackpad",
+      "Charging",
+      "Battery",
+      "Wi-Fi",
+      "Bluetooth",
+      "USB Ports",
+      "Camera",
+      "Speakers",
+      "Microphone",
+    ];
+  }
+
+  if (
+    deviceType === "PlayStation" ||
+    deviceType === "Xbox"
+  ) {
+    return [
+      "Power",
+      "HDMI Output",
+      "HDMI Port",
+      "USB Ports",
+      "Disc Drive",
+      "Wi-Fi",
+      "Bluetooth",
+      "Overheating",
+      "Fan",
+      "Controller Sync",
+    ];
+  }
+
+  if (deviceType === "Nintendo Switch") {
+    return [
+      "Power",
+      "Display",
+      "Touch",
+      "Charging",
+      "USB-C Port",
+      "Wi-Fi",
+      "Bluetooth",
+      "Game Card Reader",
+      "Joy-Con Rails",
+      "Dock Output",
+    ];
+  }
+
+  return [
+    "Power",
+    "Display",
+    "Charging",
+    "Buttons",
+    "Wi-Fi",
+    "Bluetooth",
+  ];
+}
+
+function paymentStatus(total, paid) {
+  const totalNumber = Number(total) || 0;
+  const paidNumber = Number(paid) || 0;
+
+  if (totalNumber === 0) return "No Charge";
+  if (paidNumber <= 0) return "Unpaid";
+  if (paidNumber >= totalNumber) return "Paid";
+
+  return "Partial";
+}
+
+function App() {
   const [repairs, setRepairs] = useState(() => {
     try {
-      const saved = localStorage.getItem("microtechusa_repairs");
+      const saved =
+        localStorage.getItem("microtechusa_repairs");
 
-      if (saved) {
-        const parsed = JSON.parse(saved);
+      if (!saved) return [];
 
-        return parsed.map((repair) => ({
-          priority: "Normal",
-          warranty: "No Warranty",
-          approval: "Pending",
-          partsNeeded: "",
-          internalNotes: "",
-          customerNotes: "",
-          checkIn: {},
-          ...repair,
-        }));
-      }
-
-      return defaultRepairs;
+      return JSON.parse(saved).map(normalizeRepair);
     } catch {
-      return defaultRepairs;
+      return [];
     }
   });
 
-  const [form, setForm] = useState(emptyForm);
+  const [form, setForm] = useState({
+    ...emptyForm,
+  });
+
   const [editForm, setEditForm] = useState(null);
 
-  const [showModal, setShowModal] = useState(false);
-  const [showEditModal, setShowEditModal] = useState(false);
+  const [showModal, setShowModal] =
+    useState(false);
+
+  const [showEditModal, setShowEditModal] =
+    useState(false);
 
   const [search, setSearch] = useState("");
+
+  const [paymentForm, setPaymentForm] =
+    useState({
+      amount: "",
+      method: "Cash",
+      note: "",
+    });
 
   useEffect(() => {
     localStorage.setItem(
@@ -145,103 +292,6 @@ function App() {
       JSON.stringify(repairs)
     );
   }, [repairs]);
-
-  function getCheckItems(deviceType) {
-    if (
-      deviceType === "iPhone" ||
-      deviceType === "Samsung" ||
-      deviceType === "Android"
-    ) {
-      return [
-        "Screen",
-        "Touch",
-        "Charging",
-        "Battery",
-        "Front Camera",
-        "Rear Camera",
-        "Microphone",
-        "Speaker",
-        "Wi-Fi",
-        "Bluetooth",
-        "Buttons",
-        "Face ID / Biometrics",
-      ];
-    }
-
-    if (deviceType === "iPad") {
-      return [
-        "Screen",
-        "Touch",
-        "Charging",
-        "Battery",
-        "Front Camera",
-        "Rear Camera",
-        "Speaker",
-        "Microphone",
-        "Wi-Fi",
-        "Bluetooth",
-        "Buttons",
-      ];
-    }
-
-    if (deviceType === "MacBook") {
-      return [
-        "Display",
-        "Keyboard",
-        "Trackpad",
-        "Charging",
-        "Battery",
-        "Wi-Fi",
-        "Bluetooth",
-        "USB Ports",
-        "Camera",
-        "Speakers",
-        "Microphone",
-      ];
-    }
-
-    if (
-      deviceType === "PlayStation" ||
-      deviceType === "Xbox"
-    ) {
-      return [
-        "Power",
-        "HDMI Output",
-        "HDMI Port",
-        "USB Ports",
-        "Disc Drive",
-        "Wi-Fi",
-        "Bluetooth",
-        "Overheating",
-        "Fan",
-        "Controller Sync",
-      ];
-    }
-
-    if (deviceType === "Nintendo Switch") {
-      return [
-        "Power",
-        "Display",
-        "Touch",
-        "Charging",
-        "USB-C Port",
-        "Wi-Fi",
-        "Bluetooth",
-        "Game Card Reader",
-        "Joy-Con Rails",
-        "Dock Output",
-      ];
-    }
-
-    return [
-      "Power",
-      "Display",
-      "Charging",
-      "Buttons",
-      "Wi-Fi",
-      "Bluetooth",
-    ];
-  }
 
   function handleChange(event) {
     const { name, value } = event.target;
@@ -261,13 +311,14 @@ function App() {
     }));
   }
 
-  function toggleCheckIn(item, editing = false) {
+  function toggleCheckIn(item, editing) {
     if (editing) {
       setEditForm((current) => ({
         ...current,
         checkIn: {
           ...(current.checkIn || {}),
-          [item]: !(current.checkIn || {})[item],
+          [item]:
+            !(current.checkIn || {})[item],
         },
       }));
 
@@ -278,7 +329,8 @@ function App() {
       ...current,
       checkIn: {
         ...(current.checkIn || {}),
-        [item]: !(current.checkIn || {})[item],
+        [item]:
+          !(current.checkIn || {})[item],
       },
     }));
   }
@@ -286,59 +338,161 @@ function App() {
   function getNextRepairId() {
     const numbers = repairs
       .map((repair) =>
-        Number(String(repair.id).replace("MT-", ""))
+        Number(
+          String(repair.id).replace("MT-", "")
+        )
       )
-      .filter((number) => !Number.isNaN(number));
+      .filter(
+        (number) => !Number.isNaN(number)
+      );
 
     const next =
-      numbers.length > 0 ? Math.max(...numbers) + 1 : 1;
+      numbers.length > 0
+        ? Math.max(...numbers) + 1
+        : 1;
 
-    return `MT-${String(next).padStart(6, "0")}`;
+    return `MT-${String(next).padStart(
+      6,
+      "0"
+    )}`;
   }
 
-  function handleSubmit(event) {
+  function createRepair(event) {
     event.preventDefault();
 
-    if (!form.customer || !form.model || !form.issue) {
-      alert("Please complete Customer, Model and Issue.");
+    if (
+      !form.customer ||
+      !form.model ||
+      !form.issue
+    ) {
+      alert(
+        "Please complete Customer, Model and Issue."
+      );
       return;
     }
 
-    const partsCost = Number(form.partsCost) || 0;
-    const labor = Number(form.labor) || 0;
-    const deposit = Number(form.deposit) || 0;
+    const partsCost =
+      Number(form.partsCost) || 0;
+
+    const labor =
+      Number(form.labor) || 0;
 
     const total = partsCost + labor;
-    const balance = Math.max(total - deposit, 0);
+
+    const intakeDate = nowString();
 
     const newRepair = {
-      id: getNextRepairId(),
       ...form,
+      id: getNextRepairId(),
       partsCost,
       labor,
-      deposit,
       total,
-      balance,
+      paid: 0,
+      balance: total,
+      payments: [],
+      intakeDate,
+      deliveryDate: "",
+      timeline: [
+        {
+          id: `TIME-${Date.now()}`,
+          date: intakeDate,
+          text: "Repair ticket created",
+        },
+      ],
     };
 
-    setRepairs((current) => [newRepair, ...current]);
-    setForm(emptyForm);
+    setRepairs((current) => [
+      newRepair,
+      ...current,
+    ]);
+
+    setForm({
+      ...emptyForm,
+    });
+
     setShowModal(false);
   }
 
   function openRepair(repair) {
-    setEditForm({
-      priority: "Normal",
-      warranty: "No Warranty",
-      approval: "Pending",
-      partsNeeded: "",
-      internalNotes: "",
-      customerNotes: "",
-      checkIn: {},
-      ...repair,
+    setEditForm(normalizeRepair(repair));
+
+    setPaymentForm({
+      amount: "",
+      method: "Cash",
+      note: "",
     });
 
     setShowEditModal(true);
+  }
+
+  function addPayment() {
+    if (!editForm) return;
+
+    const amount =
+      Number(paymentForm.amount) || 0;
+
+    if (amount <= 0) {
+      alert(
+        "Enter a valid payment amount."
+      );
+      return;
+    }
+
+    const date = nowString();
+
+    const payment = {
+      id: `PAY-${Date.now()}`,
+      amount,
+      method: paymentForm.method,
+      note: paymentForm.note,
+      date,
+    };
+
+    const payments = [
+      ...(editForm.payments || []),
+      payment,
+    ];
+
+    const paid = payments.reduce(
+      (sum, item) =>
+        sum + Number(item.amount || 0),
+      0
+    );
+
+    const total =
+      Number(editForm.partsCost || 0) +
+      Number(editForm.labor || 0);
+
+    const balance = Math.max(
+      total - paid,
+      0
+    );
+
+    const timeline = [
+      ...(editForm.timeline || []),
+      {
+        id: `TIME-${Date.now()}-payment`,
+        date,
+        text: `Payment received: $${amount.toFixed(
+          2
+        )} - ${paymentForm.method}`,
+      },
+    ];
+
+    setEditForm((current) => ({
+      ...current,
+      payments,
+      paid,
+      total,
+      balance,
+      timeline,
+    }));
+
+    setPaymentForm({
+      amount: "",
+      method: "Cash",
+      note: "",
+    });
   }
 
   function saveRepairChanges(event) {
@@ -346,25 +500,81 @@ function App() {
 
     if (!editForm) return;
 
-    const partsCost = Number(editForm.partsCost) || 0;
-    const labor = Number(editForm.labor) || 0;
-    const deposit = Number(editForm.deposit) || 0;
+    const original = repairs.find(
+      (repair) =>
+        repair.id === editForm.id
+    );
 
-    const total = partsCost + labor;
-    const balance = Math.max(total - deposit, 0);
+    const partsCost =
+      Number(editForm.partsCost) || 0;
+
+    const labor =
+      Number(editForm.labor) || 0;
+
+    const total =
+      partsCost + labor;
+
+    const paid = (
+      editForm.payments || []
+    ).reduce(
+      (sum, payment) =>
+        sum +
+        Number(payment.amount || 0),
+      0
+    );
+
+    const balance = Math.max(
+      total - paid,
+      0
+    );
+
+    let timeline = [
+      ...(editForm.timeline || []),
+    ];
+
+    if (
+      original &&
+      original.status !== editForm.status
+    ) {
+      timeline.push({
+        id: `TIME-${Date.now()}-status`,
+        date: nowString(),
+        text: `Status changed from ${original.status} to ${editForm.status}`,
+      });
+    }
+
+    let deliveryDate =
+      editForm.deliveryDate || "";
+
+    if (
+      editForm.status === "Completed" &&
+      original?.status !== "Completed"
+    ) {
+      deliveryDate = nowString();
+
+      timeline.push({
+        id: `TIME-${Date.now()}-completed`,
+        date: deliveryDate,
+        text: "Repair completed",
+      });
+    }
 
     const updated = {
       ...editForm,
       partsCost,
       labor,
-      deposit,
       total,
+      paid,
       balance,
+      deliveryDate,
+      timeline,
     };
 
     setRepairs((current) =>
       current.map((repair) =>
-        repair.id === updated.id ? updated : repair
+        repair.id === updated.id
+          ? updated
+          : repair
       )
     );
 
@@ -372,77 +582,58 @@ function App() {
     setShowEditModal(false);
   }
 
-  const activeRepairs = repairs.filter(
-    (repair) => repair.status !== "Completed"
-  ).length;
+  const activeRepairs =
+    repairs.filter(
+      (repair) =>
+        repair.status !== "Completed"
+    ).length;
 
-  const readyRepairs = repairs.filter(
-    (repair) => repair.status === "Ready"
-  ).length;
+  const readyRepairs =
+    repairs.filter(
+      (repair) =>
+        repair.status === "Ready"
+    ).length;
 
-  const completedRepairs = repairs.filter(
-    (repair) => repair.status === "Completed"
-  ).length;
+  const completedRepairs =
+    repairs.filter(
+      (repair) =>
+        repair.status === "Completed"
+    ).length;
 
-  const balanceDue = repairs.reduce(
-    (total, repair) =>
-      total + Number(repair.balance || 0),
-    0
-  );
+  const balanceDue =
+    repairs.reduce(
+      (sum, repair) =>
+        sum +
+        Number(repair.balance || 0),
+      0
+    );
 
-  const filteredRepairs = repairs.filter((repair) => {
-    const text = `
-      ${repair.id}
-      ${repair.customer}
-      ${repair.phone}
-      ${repair.deviceType}
-      ${repair.brand}
-      ${repair.model}
-      ${repair.issue}
-      ${repair.status}
-      ${repair.technician}
-      ${repair.priority}
-      ${repair.approval}
-    `.toLowerCase();
+  const filteredRepairs =
+    repairs.filter((repair) => {
+      const text = `
+        ${repair.id}
+        ${repair.customer}
+        ${repair.phone}
+        ${repair.deviceType}
+        ${repair.brand}
+        ${repair.model}
+        ${repair.issue}
+        ${repair.status}
+        ${repair.technician}
+      `.toLowerCase();
 
-    return text.includes(search.toLowerCase());
-  });
+      return text.includes(
+        search.toLowerCase()
+      );
+    });
 
-  const formParts = Number(form.partsCost) || 0;
-  const formLabor = Number(form.labor) || 0;
-  const formDeposit = Number(form.deposit) || 0;
-  const formTotal = formParts + formLabor;
-  const formBalance = Math.max(
-    formTotal - formDeposit,
-    0
-  );
-
-  const editParts = Number(editForm?.partsCost) || 0;
-  const editLabor = Number(editForm?.labor) || 0;
-  const editDeposit = Number(editForm?.deposit) || 0;
-  const editTotal = editParts + editLabor;
-  const editBalance = Math.max(
-    editTotal - editDeposit,
-    0
-  );
-
-  function paymentStatus(total, paid) {
-    const totalNumber = Number(total) || 0;
-    const paidNumber = Number(paid) || 0;
-
-    if (totalNumber === 0) return "No Charge";
-    if (paidNumber <= 0) return "Unpaid";
-    if (paidNumber >= totalNumber) return "Paid";
-
-    return "Partial";
-  }
-
-  function renderRepairForm({
+  function renderRepairFields(
     data,
     onChange,
-    editing = false,
-  }) {
-    const checkItems = getCheckItems(data.deviceType);
+    editing
+  ) {
+    const checkItems =
+      getCheckItems(data.deviceType);
 
     return (
       <div className="form-grid">
@@ -452,7 +643,6 @@ function App() {
             name="customer"
             value={data.customer || ""}
             onChange={onChange}
-            placeholder="Customer name"
           />
         </div>
 
@@ -462,7 +652,6 @@ function App() {
             name="phone"
             value={data.phone || ""}
             onChange={onChange}
-            placeholder="Phone number"
           />
         </div>
 
@@ -473,8 +662,10 @@ function App() {
             value={data.deviceType}
             onChange={onChange}
           >
-            {deviceTypes.map((type) => (
-              <option key={type}>{type}</option>
+            {DEVICE_TYPES.map((type) => (
+              <option key={type}>
+                {type}
+              </option>
             ))}
           </select>
         </div>
@@ -485,7 +676,6 @@ function App() {
             name="brand"
             value={data.brand || ""}
             onChange={onChange}
-            placeholder="Apple, Samsung, Sony..."
           />
         </div>
 
@@ -495,7 +685,6 @@ function App() {
             name="model"
             value={data.model || ""}
             onChange={onChange}
-            placeholder="Device model"
           />
         </div>
 
@@ -515,8 +704,10 @@ function App() {
             value={data.priority}
             onChange={onChange}
           >
-            {priorities.map((priority) => (
-              <option key={priority}>{priority}</option>
+            {PRIORITIES.map((item) => (
+              <option key={item}>
+                {item}
+              </option>
             ))}
           </select>
         </div>
@@ -528,8 +719,10 @@ function App() {
             value={data.status}
             onChange={onChange}
           >
-            {statuses.map((status) => (
-              <option key={status}>{status}</option>
+            {STATUSES.map((item) => (
+              <option key={item}>
+                {item}
+              </option>
             ))}
           </select>
         </div>
@@ -541,20 +734,24 @@ function App() {
             value={data.technician}
             onChange={onChange}
           >
-            {technicians.map((technician) => (
-              <option key={technician}>
-                {technician}
+            {TECHNICIANS.map((item) => (
+              <option key={item}>
+                {item}
               </option>
             ))}
           </select>
         </div>
 
         <div className="form-group">
-          <label>Estimated Completion</label>
+          <label>
+            Estimated Completion
+          </label>
           <input
             type="date"
             name="estimatedCompletion"
-            value={data.estimatedCompletion || ""}
+            value={
+              data.estimatedCompletion || ""
+            }
             onChange={onChange}
           />
         </div>
@@ -563,12 +760,16 @@ function App() {
           <label>Device Condition</label>
           <select
             name="condition"
-            value={data.condition || "Good"}
+            value={
+              data.condition || "Good"
+            }
             onChange={onChange}
           >
             <option>Good</option>
             <option>Cracked Screen</option>
-            <option>Broken Back Glass</option>
+            <option>
+              Broken Back Glass
+            </option>
             <option>Bent Frame</option>
             <option>Liquid Damage</option>
             <option>Heavy Damage</option>
@@ -577,15 +778,21 @@ function App() {
         </div>
 
         <div className="form-group">
-          <label>Customer Approval</label>
+          <label>
+            Customer Approval
+          </label>
           <select
             name="approval"
             value={data.approval}
             onChange={onChange}
           >
-            {approvalOptions.map((option) => (
-              <option key={option}>{option}</option>
-            ))}
+            {APPROVAL_OPTIONS.map(
+              (item) => (
+                <option key={item}>
+                  {item}
+                </option>
+              )
+            )}
           </select>
         </div>
 
@@ -596,9 +803,13 @@ function App() {
             value={data.warranty}
             onChange={onChange}
           >
-            {warrantyOptions.map((option) => (
-              <option key={option}>{option}</option>
-            ))}
+            {WARRANTY_OPTIONS.map(
+              (item) => (
+                <option key={item}>
+                  {item}
+                </option>
+              )
+            )}
           </select>
         </div>
 
@@ -612,12 +823,15 @@ function App() {
         </div>
 
         <div className="form-group full-width">
-          <label>Accessories Received</label>
+          <label>
+            Accessories Received
+          </label>
           <input
             name="accessories"
-            value={data.accessories || ""}
+            value={
+              data.accessories || ""
+            }
             onChange={onChange}
-            placeholder="Case, charger, controller, cables..."
           />
         </div>
 
@@ -635,7 +849,9 @@ function App() {
           <label>Diagnosis</label>
           <textarea
             name="diagnosis"
-            value={data.diagnosis || ""}
+            value={
+              data.diagnosis || ""
+            }
             onChange={onChange}
             rows="3"
           />
@@ -645,20 +861,24 @@ function App() {
           <label>Parts Needed</label>
           <textarea
             name="partsNeeded"
-            value={data.partsNeeded || ""}
+            value={
+              data.partsNeeded || ""
+            }
             onChange={onChange}
-            placeholder="Charging port, screen, HDMI port..."
             rows="2"
           />
         </div>
 
         <div className="form-group full-width">
-          <label>Internal Technician Notes</label>
+          <label>
+            Internal Technician Notes
+          </label>
           <textarea
             name="internalNotes"
-            value={data.internalNotes || ""}
+            value={
+              data.internalNotes || ""
+            }
             onChange={onChange}
-            placeholder="Internal notes — not for customer"
             rows="3"
           />
         </div>
@@ -667,9 +887,10 @@ function App() {
           <label>Customer Notes</label>
           <textarea
             name="customerNotes"
-            value={data.customerNotes || ""}
+            value={
+              data.customerNotes || ""
+            }
             onChange={onChange}
-            placeholder="Notes that can appear on invoice"
             rows="3"
           />
         </div>
@@ -685,9 +906,14 @@ function App() {
               >
                 <input
                   type="checkbox"
-                  checked={Boolean(data.checkIn?.[item])}
+                  checked={Boolean(
+                    data.checkIn?.[item]
+                  )}
                   onChange={() =>
-                    toggleCheckIn(item, editing)
+                    toggleCheckIn(
+                      item,
+                      editing
+                    )
                   }
                 />
 
@@ -703,7 +929,9 @@ function App() {
             type="number"
             step="0.01"
             name="partsCost"
-            value={data.partsCost ?? ""}
+            value={
+              data.partsCost ?? ""
+            }
             onChange={onChange}
           />
         </div>
@@ -718,42 +946,45 @@ function App() {
             onChange={onChange}
           />
         </div>
-
-        <div className="form-group">
-          <label>Deposit</label>
-          <input
-            type="number"
-            step="0.01"
-            name="deposit"
-            value={data.deposit ?? ""}
-            onChange={onChange}
-          />
-        </div>
-
-        <div className="form-group">
-          <label>Payment Status</label>
-          <input
-            value={paymentStatus(
-              (Number(data.partsCost) || 0) +
-                (Number(data.labor) || 0),
-              Number(data.deposit) || 0
-            )}
-            readOnly
-          />
-        </div>
       </div>
     );
   }
+
+  const editTotal =
+    Number(editForm?.partsCost || 0) +
+    Number(editForm?.labor || 0);
+
+  const editPaid = (
+    editForm?.payments || []
+  ).reduce(
+    (sum, payment) =>
+      sum +
+      Number(payment.amount || 0),
+    0
+  );
+
+  const editBalance = Math.max(
+    editTotal - editPaid,
+    0
+  );
+
+  const formTotal =
+    Number(form.partsCost || 0) +
+    Number(form.labor || 0);
 
   return (
     <div className="app">
       <aside className="sidebar">
         <div className="brand">
-          <div className="brand-logo">M</div>
+          <div className="brand-logo">
+            M
+          </div>
 
           <div>
             <h2>MicrotechUSA</h2>
-            <span>Repair Management</span>
+            <span>
+              Repair Management
+            </span>
           </div>
         </div>
 
@@ -761,11 +992,21 @@ function App() {
           <button className="nav-item active">
             Dashboard
           </button>
-          <button className="nav-item">Repairs</button>
-          <button className="nav-item">Customers</button>
-          <button className="nav-item">Invoices</button>
-          <button className="nav-item">Payments</button>
-          <button className="nav-item">Settings</button>
+          <button className="nav-item">
+            Repairs
+          </button>
+          <button className="nav-item">
+            Customers
+          </button>
+          <button className="nav-item">
+            Invoices
+          </button>
+          <button className="nav-item">
+            Payments
+          </button>
+          <button className="nav-item">
+            Settings
+          </button>
         </nav>
 
         <div className="sidebar-footer">
@@ -777,18 +1018,21 @@ function App() {
       <main className="main">
         <header className="topbar">
           <div>
-            <p className="eyebrow">Repair Center</p>
-
+            <p className="eyebrow">
+              Repair Center
+            </p>
             <h1>Dashboard</h1>
-
             <p className="subtitle">
-              Manage repairs, customers and payments.
+              Manage repairs, customers
+              and payments.
             </p>
           </div>
 
           <button
             className="primary-btn"
-            onClick={() => setShowModal(true)}
+            onClick={() =>
+              setShowModal(true)
+            }
           >
             + New Repair
           </button>
@@ -800,10 +1044,13 @@ function App() {
               <span className="stat-label">
                 Active Repairs
               </span>
-              <strong>{activeRepairs}</strong>
+              <strong>
+                {activeRepairs}
+              </strong>
             </div>
-
-            <div className="stat-icon">🔧</div>
+            <div className="stat-icon">
+              🔧
+            </div>
           </div>
 
           <div className="stat-card">
@@ -811,10 +1058,13 @@ function App() {
               <span className="stat-label">
                 Ready
               </span>
-              <strong>{readyRepairs}</strong>
+              <strong>
+                {readyRepairs}
+              </strong>
             </div>
-
-            <div className="stat-icon">✅</div>
+            <div className="stat-icon">
+              ✅
+            </div>
           </div>
 
           <div className="stat-card">
@@ -822,10 +1072,13 @@ function App() {
               <span className="stat-label">
                 Completed
               </span>
-              <strong>{completedRepairs}</strong>
+              <strong>
+                {completedRepairs}
+              </strong>
             </div>
-
-            <div className="stat-icon">📦</div>
+            <div className="stat-icon">
+              📦
+            </div>
           </div>
 
           <div className="stat-card">
@@ -833,13 +1086,13 @@ function App() {
               <span className="stat-label">
                 Balance Due
               </span>
-
               <strong>
                 ${balanceDue.toFixed(2)}
               </strong>
             </div>
-
-            <div className="stat-icon">💵</div>
+            <div className="stat-icon">
+              💵
+            </div>
           </div>
         </section>
 
@@ -848,7 +1101,8 @@ function App() {
             <div>
               <h2>Recent Repairs</h2>
               <p>
-                Latest repair tickets in your shop.
+                Latest repair tickets
+                in your shop.
               </p>
             </div>
 
@@ -858,13 +1112,11 @@ function App() {
                 placeholder="Search repair..."
                 value={search}
                 onChange={(event) =>
-                  setSearch(event.target.value)
+                  setSearch(
+                    event.target.value
+                  )
                 }
               />
-
-              <button className="secondary-btn">
-                View All
-              </button>
             </div>
           </div>
 
@@ -874,134 +1126,88 @@ function App() {
                 <tr>
                   <th>Repair #</th>
                   <th>Customer</th>
-                  <th>Type</th>
                   <th>Device</th>
-                  <th>Priority</th>
                   <th>Status</th>
-                  <th>Technician</th>
                   <th>Total</th>
+                  <th>Paid</th>
                   <th>Balance</th>
                   <th></th>
                 </tr>
               </thead>
 
               <tbody>
-                {filteredRepairs.map((repair) => (
-                  <tr key={repair.id}>
-                    <td className="repair-id">
-                      {repair.id}
-                    </td>
+                {filteredRepairs.map(
+                  (repair) => (
+                    <tr key={repair.id}>
+                      <td className="repair-id">
+                        {repair.id}
+                      </td>
 
-                    <td>
-                      <strong>
-                        {repair.customer}
-                      </strong>
+                      <td>
+                        <strong>
+                          {repair.customer}
+                        </strong>
+                        <div className="small-text">
+                          {repair.phone}
+                        </div>
+                      </td>
 
-                      <div className="small-text">
-                        {repair.phone}
-                      </div>
-                    </td>
+                      <td>
+                        {repair.deviceType}{" "}
+                        {repair.model}
+                      </td>
 
-                    <td>{repair.deviceType}</td>
+                      <td>
+                        <span
+                          className={`status ${repair.status
+                            .toLowerCase()
+                            .replaceAll(
+                              " ",
+                              "-"
+                            )}`}
+                        >
+                          {repair.status}
+                        </span>
+                      </td>
 
-                    <td>
-                      {repair.brand} {repair.model}
-                    </td>
+                      <td className="balance">
+                        $
+                        {Number(
+                          repair.total || 0
+                        ).toFixed(2)}
+                      </td>
 
-                    <td>
-                      <span
-                        className={`priority priority-${repair.priority
-                          .toLowerCase()
-                          .replaceAll(" ", "-")}`}
-                      >
-                        {repair.priority}
-                      </span>
-                    </td>
+                      <td>
+                        $
+                        {Number(
+                          repair.paid || 0
+                        ).toFixed(2)}
+                      </td>
 
-                    <td>
-                      <span
-                        className={`status ${repair.status
-                          .toLowerCase()
-                          .replaceAll(" ", "-")}`}
-                      >
-                        {repair.status}
-                      </span>
-                    </td>
+                      <td className="balance">
+                        $
+                        {Number(
+                          repair.balance || 0
+                        ).toFixed(2)}
+                      </td>
 
-                    <td>{repair.technician}</td>
-
-                    <td className="balance">
-                      $
-                      {Number(
-                        repair.total || 0
-                      ).toFixed(2)}
-                    </td>
-
-                    <td className="balance">
-                      $
-                      {Number(
-                        repair.balance || 0
-                      ).toFixed(2)}
-                    </td>
-
-                    <td>
-                      <button
-                        className="table-btn"
-                        onClick={() =>
-                          openRepair(repair)
-                        }
-                      >
-                        Open
-                      </button>
-                    </td>
-                  </tr>
-                ))}
-
-                {filteredRepairs.length === 0 && (
-                  <tr>
-                    <td
-                      colSpan="10"
-                      style={{ textAlign: "center" }}
-                    >
-                      No repairs found.
-                    </td>
-                  </tr>
+                      <td>
+                        <button
+                          className="table-btn"
+                          onClick={() =>
+                            openRepair(
+                              repair
+                            )
+                          }
+                        >
+                          Open
+                        </button>
+                      </td>
+                    </tr>
+                  )
                 )}
               </tbody>
             </table>
-          </div>
-        </section>
-
-        <section className="content-card device-section">
-          <div className="content-header">
-            <div>
-              <h2>
-                Repairs by Device Type
-              </h2>
-
-              <p>
-                Current repair volume by category.
-              </p>
-            </div>
-          </div>
-
-          <div className="device-grid">
-            {deviceTypes.map((type) => {
-              const count = repairs.filter(
-                (repair) =>
-                  repair.deviceType === type
-              ).length;
-
-              return (
-                <div
-                  className="device-card"
-                  key={type}
-                >
-                  <span>{type}</span>
-                  <strong>{count}</strong>
-                </div>
-              );
-            })}
           </div>
         </section>
       </main>
@@ -1014,7 +1220,6 @@ function App() {
                 <p className="eyebrow">
                   Repair Ticket
                 </p>
-
                 <h2>New Repair</h2>
               </div>
 
@@ -1028,27 +1233,14 @@ function App() {
               </button>
             </div>
 
-            <form onSubmit={handleSubmit}>
-              {renderRepairForm({
-                data: form,
-                onChange: handleChange,
-              })}
+            <form onSubmit={createRepair}>
+              {renderRepairFields(
+                form,
+                handleChange,
+                false
+              )}
 
               <div className="totals-box">
-                <div>
-                  <span>Parts</span>
-                  <strong>
-                    ${formParts.toFixed(2)}
-                  </strong>
-                </div>
-
-                <div>
-                  <span>Labor</span>
-                  <strong>
-                    ${formLabor.toFixed(2)}
-                  </strong>
-                </div>
-
                 <div>
                   <span>Total</span>
                   <strong>
@@ -1057,16 +1249,14 @@ function App() {
                 </div>
 
                 <div>
-                  <span>Deposit</span>
-                  <strong>
-                    ${formDeposit.toFixed(2)}
-                  </strong>
+                  <span>Paid</span>
+                  <strong>$0.00</strong>
                 </div>
 
                 <div className="balance-total">
                   <span>Balance Due</span>
                   <strong>
-                    ${formBalance.toFixed(2)}
+                    ${formTotal.toFixed(2)}
                   </strong>
                 </div>
               </div>
@@ -1102,9 +1292,7 @@ function App() {
                 <p className="eyebrow">
                   Repair Ticket
                 </p>
-
                 <h2>{editForm.id}</h2>
-
                 <p className="small-text">
                   {editForm.customer} ·{" "}
                   {editForm.deviceType} ·{" "}
@@ -1124,29 +1312,39 @@ function App() {
             </div>
 
             <form
-              onSubmit={saveRepairChanges}
+              onSubmit={
+                saveRepairChanges
+              }
             >
-              {renderRepairForm({
-                data: editForm,
-                onChange: handleEditChange,
-                editing: true,
-              })}
+              <div className="ticket-dates">
+                <div>
+                  <span>
+                    Check-In Date
+                  </span>
+                  <strong>
+                    {editForm.intakeDate ||
+                      "Previous ticket"}
+                  </strong>
+                </div>
+
+                <div>
+                  <span>
+                    Delivery Date
+                  </span>
+                  <strong>
+                    {editForm.deliveryDate ||
+                      "Not delivered"}
+                  </strong>
+                </div>
+              </div>
+
+              {renderRepairFields(
+                editForm,
+                handleEditChange,
+                true
+              )}
 
               <div className="totals-box">
-                <div>
-                  <span>Parts</span>
-                  <strong>
-                    ${editParts.toFixed(2)}
-                  </strong>
-                </div>
-
-                <div>
-                  <span>Labor</span>
-                  <strong>
-                    ${editLabor.toFixed(2)}
-                  </strong>
-                </div>
-
                 <div>
                   <span>Total</span>
                   <strong>
@@ -1155,18 +1353,186 @@ function App() {
                 </div>
 
                 <div>
-                  <span>Deposit</span>
+                  <span>Total Paid</span>
                   <strong>
-                    ${editDeposit.toFixed(2)}
+                    ${editPaid.toFixed(2)}
+                  </strong>
+                </div>
+
+                <div>
+                  <span>
+                    Payment Status
+                  </span>
+                  <strong>
+                    {paymentStatus(
+                      editTotal,
+                      editPaid
+                    )}
                   </strong>
                 </div>
 
                 <div className="balance-total">
-                  <span>Balance Due</span>
+                  <span>
+                    Balance Due
+                  </span>
                   <strong>
                     ${editBalance.toFixed(2)}
                   </strong>
                 </div>
+              </div>
+
+              <div className="repair-module">
+                <h3>💳 Add Payment</h3>
+
+                <div className="payment-entry">
+                  <input
+                    type="number"
+                    step="0.01"
+                    placeholder="Amount"
+                    value={
+                      paymentForm.amount
+                    }
+                    onChange={(event) =>
+                      setPaymentForm(
+                        (current) => ({
+                          ...current,
+                          amount:
+                            event.target
+                              .value,
+                        })
+                      )
+                    }
+                  />
+
+                  <select
+                    value={
+                      paymentForm.method
+                    }
+                    onChange={(event) =>
+                      setPaymentForm(
+                        (current) => ({
+                          ...current,
+                          method:
+                            event.target
+                              .value,
+                        })
+                      )
+                    }
+                  >
+                    {PAYMENT_METHODS.map(
+                      (method) => (
+                        <option
+                          key={method}
+                        >
+                          {method}
+                        </option>
+                      )
+                    )}
+                  </select>
+
+                  <input
+                    placeholder="Payment note"
+                    value={
+                      paymentForm.note
+                    }
+                    onChange={(event) =>
+                      setPaymentForm(
+                        (current) => ({
+                          ...current,
+                          note:
+                            event.target
+                              .value,
+                        })
+                      )
+                    }
+                  />
+
+                  <button
+                    type="button"
+                    className="primary-btn"
+                    onClick={addPayment}
+                  >
+                    + Add Payment
+                  </button>
+                </div>
+
+                <h4>Payment History</h4>
+
+                {editForm.payments
+                  ?.length === 0 && (
+                  <p className="small-text">
+                    No payments recorded.
+                  </p>
+                )}
+
+                {editForm.payments?.map(
+                  (payment) => (
+                    <div
+                      className="history-row"
+                      key={payment.id}
+                    >
+                      <div>
+                        <strong>
+                          $
+                          {Number(
+                            payment.amount
+                          ).toFixed(2)}
+                        </strong>
+                        <span>
+                          {
+                            payment.method
+                          }
+                        </span>
+                      </div>
+
+                      <div>
+                        <span>
+                          {payment.date}
+                        </span>
+
+                        {payment.note && (
+                          <small>
+                            {payment.note}
+                          </small>
+                        )}
+                      </div>
+                    </div>
+                  )
+                )}
+              </div>
+
+              <div className="repair-module">
+                <h3>
+                  🕒 Repair Timeline
+                </h3>
+
+                {editForm.timeline
+                  ?.length === 0 && (
+                  <p className="small-text">
+                    No timeline entries
+                    yet.
+                  </p>
+                )}
+
+                {editForm.timeline?.map(
+                  (entry) => (
+                    <div
+                      className="timeline-row"
+                      key={entry.id}
+                    >
+                      <div className="timeline-dot" />
+
+                      <div>
+                        <strong>
+                          {entry.text}
+                        </strong>
+                        <span>
+                          {entry.date}
+                        </span>
+                      </div>
+                    </div>
+                  )
+                )}
               </div>
 
               <div className="modal-actions">
