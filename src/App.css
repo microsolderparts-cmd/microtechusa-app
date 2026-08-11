@@ -965,4 +965,165 @@ tbody tr:hover {
     width: 100%;
     min-height: auto;
   }
+}/* =================================
+   APP SECTIONS
+   ================================= */
+
+.secondary-stats {
+  margin-top: 18px;
+}
+
+.repair-filters {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.filter-btn {
+  border: 1px solid #d1d5db;
+  background: white;
+  padding: 8px 12px;
+  border-radius: 20px;
+  color: #475569;
+}
+
+.filter-btn:hover {
+  background: #f8fafc;
+}
+
+.filter-btn.active {
+  background: #2563eb;
+  color: white;
+  border-color: #2563eb;
+}
+
+/* CUSTOMERS */
+
+.customer-grid {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 18px;
+  margin-top: 28px;
+}
+
+.customer-card {
+  background: white;
+  border: 1px solid #e5e7eb;
+  border-radius: 14px;
+  padding: 22px;
+  box-shadow: 0 3px 10px rgba(15, 23, 42, 0.04);
+}
+
+.customer-card h3 {
+  margin: 0;
+}
+
+.customer-card p {
+  margin: 5px 0 0;
+  color: #64748b;
+}
+
+.customer-stats {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 10px;
+  margin-top: 20px;
+}
+
+.customer-stats div {
+  padding: 12px;
+  border-radius: 10px;
+  background: #f8fafc;
+}
+
+.customer-stats span {
+  display: block;
+  color: #64748b;
+  font-size: 11px;
+  margin-bottom: 5px;
+  text-transform: uppercase;
+}
+
+.customer-stats strong {
+  font-size: 18px;
+}
+
+.customer-repairs {
+  margin-top: 18px;
+  display: flex;
+  flex-direction: column;
+  gap: 7px;
+}
+
+.customer-repairs button {
+  display: grid;
+  grid-template-columns: 100px 1fr auto;
+  gap: 10px;
+  text-align: left;
+  border: 1px solid #e5e7eb;
+  background: white;
+  border-radius: 8px;
+  padding: 10px;
+}
+
+.customer-repairs button:hover {
+  background: #f8fafc;
+}
+
+/* PAYMENTS */
+
+.payment-total-card {
+  background: white;
+  border: 1px solid #e5e7eb;
+  border-radius: 12px;
+  padding: 14px 20px;
+}
+
+.payment-total-card span {
+  display: block;
+  color: #64748b;
+  font-size: 12px;
+  margin-bottom: 4px;
+}
+
+.payment-total-card strong {
+  font-size: 24px;
+}
+
+/* SETTINGS */
+
+.settings-card {
+  max-width: 900px;
+  margin-top: 28px;
+  padding: 26px;
+  border-radius: 14px;
+  background: white;
+  border: 1px solid #e5e7eb;
+  box-shadow: 0 3px 10px rgba(15, 23, 42, 0.04);
+}
+
+.settings-card h2 {
+  margin-top: 0;
+}
+
+.settings-note {
+  margin-top: 20px;
+  color: #64748b;
+  font-size: 13px;
+}
+
+@media (max-width: 900px) {
+  .customer-grid {
+    grid-template-columns: 1fr;
+  }
+}
+
+@media (max-width: 650px) {
+  .customer-stats {
+    grid-template-columns: 1fr;
+  }
+
+  .customer-repairs button {
+    grid-template-columns: 1fr;
+  }
 }
