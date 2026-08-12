@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
 import "./App.css";
+import { supabase } from "./supabase";
 import {
   loadRepairsFromSupabase,
   saveRepairToSupabase,
@@ -2830,6 +2831,20 @@ function App() {
             </button>
           ))}
         </nav>
+
+        <button
+          className="nav-item"
+          onClick={async () => {
+            const { error } = await supabase.auth.signOut();
+
+            if (error) {
+              console.error("Sign out failed:", error);
+              alert("Unable to sign out. Please try again.");
+            }
+          }}
+        >
+          Sign Out
+        </button>
 
         <div className="sidebar-footer">
           <p>
