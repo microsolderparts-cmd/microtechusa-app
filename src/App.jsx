@@ -1,6 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
 import "./App.css";
-
 const DEVICE_TYPES = [
   "iPhone",
   "iPad",
@@ -388,7 +387,6 @@ function App() {
       JSON.stringify(businessSettings)
     );
   }, [businessSettings]);
-
   function handleChange(event) {
     const { name, value } =
       event.target;
