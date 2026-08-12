@@ -1,5 +1,11 @@
 import { useEffect, useMemo, useState } from "react";
 import "./App.css";
+import {
+  loadRepairsFromSupabase,
+  saveRepairToSupabase,
+  loadBusinessSettingsFromSupabase,
+  saveBusinessSettingsToSupabase,
+} from "./supabaseData";
 const DEVICE_TYPES = [
   "iPhone",
   "iPad",
@@ -374,6 +380,54 @@ function App() {
       status: "Needed",
     });
 
+  const [cloudReady, setCloudReady] =
+    useState(false);
+
+  useEffect(() => {
+    let cancelled = false;
+
+    async function loadCloudData() {
+      try {
+        const [cloudRepairs, cloudSettings] =
+          await Promise.all([
+            loadRepairsFromSupabase(),
+            loadBusinessSettingsFromSupabase(),
+          ]);
+
+        if (cancelled) return;
+
+        if (cloudRepairs.length > 0) {
+          setRepairs(
+            cloudRepairs.map(normalizeRepair)
+          );
+        }
+
+        if (cloudSettings) {
+          setBusinessSettings(
+            cloudSettings
+          );
+        }
+
+        setCloudReady(true);
+        console.log(
+          `Supabase loaded ${cloudRepairs.length} repair(s).`
+        );
+      } catch (error) {
+        console.error(
+          "Supabase load failed. Using local backup:",
+          error
+        );
+        setCloudReady(false);
+      }
+    }
+
+    loadCloudData();
+
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
   useEffect(() => {
     localStorage.setItem(
       "microtechusa_repairs",
@@ -386,7 +440,22 @@ function App() {
       "microtechusa_settings",
       JSON.stringify(businessSettings)
     );
-  }, [businessSettings]);
+
+    if (!cloudReady) return;
+
+    const timer = setTimeout(() => {
+      saveBusinessSettingsToSupabase(
+        businessSettings
+      ).catch((error) => {
+        console.error(
+          "Settings cloud sync failed:",
+          error
+        );
+      });
+    }, 700);
+
+    return () => clearTimeout(timer);
+  }, [businessSettings, cloudReady]);
   function handleChange(event) {
     const { name, value } =
       event.target;
@@ -488,7 +557,7 @@ function App() {
     )}`;
   }
 
-  function createRepair(event) {
+  async function createRepair(event) {
     event.preventDefault();
 
     if (
@@ -540,6 +609,20 @@ function App() {
       newRepair,
       ...current,
     ]);
+
+    try {
+      await saveRepairToSupabase(
+        newRepair
+      );
+    } catch (error) {
+      console.error(
+        "New repair cloud sync failed:",
+        error
+      );
+      alert(
+        "Repair saved locally, but Supabase sync failed. Your ticket is still safe on this device."
+      );
+    }
 
     setForm({
       ...emptyForm,
@@ -717,7 +800,7 @@ function App() {
     }));
   }
 
-  function saveRepairChanges(
+  async function saveRepairChanges(
     event
   ) {
     event.preventDefault();
@@ -811,9 +894,23 @@ function App() {
     );
 
     setEditForm(updated);
+
+    try {
+      await saveRepairToSupabase(
+        updated
+      );
+    } catch (error) {
+      console.error(
+        "Repair cloud sync failed:",
+        error
+      );
+      alert(
+        "Changes were saved locally, but Supabase sync failed. Your local copy is still safe."
+      );
+    }
   }
 
-  function generateInvoice() {
+  async function generateInvoice() {
     if (!editForm) return;
 
     let updated = {
@@ -844,10 +941,21 @@ function App() {
       );
     }
 
+    try {
+      await saveRepairToSupabase(
+        updated
+      );
+    } catch (error) {
+      console.error(
+        "Invoice cloud sync failed:",
+        error
+      );
+    }
+
     setShowInvoice(true);
   }
 
-  function duplicateRepair() {
+  async function duplicateRepair() {
     if (!editForm) return;
 
     const intakeDate =
@@ -892,6 +1000,20 @@ function App() {
       duplicate,
       ...current,
     ]);
+
+    try {
+      await saveRepairToSupabase(
+        duplicate
+      );
+    } catch (error) {
+      console.error(
+        "Duplicate repair cloud sync failed:",
+        error
+      );
+      alert(
+        "Duplicate ticket was created locally, but Supabase sync failed."
+      );
+    }
 
     setShowEditModal(false);
     setEditForm(null);
