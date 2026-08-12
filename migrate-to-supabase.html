@@ -1,0 +1,1057 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+
+    <meta
+      name="viewport"
+      content="width=device-width, initial-scale=1.0"
+    />
+
+    <title>MicrotechUSA - Supabase Migration</title>
+
+    <style>
+      * {
+        box-sizing: border-box;
+      }
+
+      body {
+        margin: 0;
+        padding: 40px 20px;
+        font-family: Arial, Helvetica, sans-serif;
+        background: #f4f6f8;
+        color: #17202a;
+      }
+
+      .container {
+        width: 100%;
+        max-width: 800px;
+        margin: 0 auto;
+      }
+
+      .card {
+        background: white;
+        border: 1px solid #e5e7eb;
+        border-radius: 16px;
+        padding: 28px;
+        box-shadow: 0 6px 24px rgba(15, 23, 42, 0.06);
+        margin-bottom: 20px;
+      }
+
+      h1,
+      h2 {
+        margin-top: 0;
+      }
+
+      .subtitle {
+        color: #64748b;
+        line-height: 1.5;
+      }
+
+      .status-grid {
+        display: grid;
+        grid-template-columns: repeat(3, 1fr);
+        gap: 12px;
+        margin-top: 20px;
+      }
+
+      .status-box {
+        background: #f8fafc;
+        border: 1px solid #e5e7eb;
+        border-radius: 12px;
+        padding: 16px;
+      }
+
+      .status-box span {
+        display: block;
+        font-size: 12px;
+        color: #64748b;
+        margin-bottom: 6px;
+      }
+
+      .status-box strong {
+        font-size: 24px;
+      }
+
+      .success {
+        color: #047857;
+      }
+
+      .error {
+        color: #dc2626;
+      }
+
+      .warning {
+        color: #b45309;
+      }
+
+      .buttons {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 12px;
+        margin-top: 24px;
+      }
+
+      button {
+        border: 0;
+        border-radius: 9px;
+        padding: 12px 18px;
+        font-size: 14px;
+        font-weight: 700;
+        cursor: pointer;
+      }
+
+      .primary {
+        background: #2563eb;
+        color: white;
+      }
+
+      .secondary {
+        background: #e2e8f0;
+        color: #1e293b;
+      }
+
+      button:disabled {
+        opacity: 0.5;
+        cursor: not-allowed;
+      }
+
+      #log {
+        margin-top: 20px;
+        padding: 16px;
+        min-height: 120px;
+        max-height: 340px;
+        overflow-y: auto;
+        background: #111827;
+        color: #e5e7eb;
+        border-radius: 10px;
+        font-family: monospace;
+        font-size: 12px;
+        line-height: 1.6;
+        white-space: pre-wrap;
+      }
+
+      .important {
+        margin-top: 18px;
+        padding: 14px;
+        border-radius: 10px;
+        background: #fff7ed;
+        border: 1px solid #fed7aa;
+        color: #9a3412;
+        line-height: 1.5;
+      }
+
+      @media (max-width: 650px) {
+        .status-grid {
+          grid-template-columns: 1fr;
+        }
+
+        .buttons {
+          flex-direction: column;
+        }
+
+        button {
+          width: 100%;
+        }
+      }
+    </style>
+  </head>
+
+  <body>
+    <div class="container">
+      <div class="card">
+        <h1>MicrotechUSA</h1>
+
+        <p class="subtitle">
+          Local Storage → Supabase Migration
+        </p>
+
+        <div class="status-grid">
+          <div class="status-box">
+            <span>LOCAL REPAIRS</span>
+            <strong id="repairCount">0</strong>
+          </div>
+
+          <div class="status-box">
+            <span>LOGIN</span>
+            <strong id="loginStatus">Checking...</strong>
+          </div>
+
+          <div class="status-box">
+            <span>MIGRATION</span>
+            <strong id="migrationStatus">Not Started</strong>
+          </div>
+        </div>
+
+        <div class="important">
+          First download the backup. Do not delete your browser data
+          after migration. We will verify Supabase before changing the
+          main Dashboard.
+        </div>
+
+        <div class="buttons">
+          <button
+            id="backupButton"
+            class="secondary"
+          >
+            ⬇️ Download Backup JSON
+          </button>
+
+          <button
+            id="migrateButton"
+            class="primary"
+            disabled
+          >
+            ☁️ Migrate to Supabase
+          </button>
+        </div>
+
+        <div id="log">Loading...</div>
+      </div>
+    </div>
+
+    <script type="module">
+      import { supabase } from "./src/supabase.js";
+
+      const REPAIRS_KEY = "microtechusa_repairs";
+      const SETTINGS_KEY = "microtechusa_settings";
+
+      const repairCount =
+        document.getElementById("repairCount");
+
+      const loginStatus =
+        document.getElementById("loginStatus");
+
+      const migrationStatus =
+        document.getElementById("migrationStatus");
+
+      const backupButton =
+        document.getElementById("backupButton");
+
+      const migrateButton =
+        document.getElementById("migrateButton");
+
+      const logBox =
+        document.getElementById("log");
+
+      let localRepairs = [];
+      let localSettings = {};
+
+      function log(message) {
+        const time =
+          new Date().toLocaleTimeString();
+
+        logBox.textContent +=
+          `[${time}] ${message}\n`;
+
+        logBox.scrollTop =
+          logBox.scrollHeight;
+      }
+
+      function safeParse(value, fallback) {
+        if (!value) return fallback;
+
+        try {
+          return JSON.parse(value);
+        } catch {
+          return fallback;
+        }
+      }
+
+      function toIsoDate(value) {
+        if (!value) return null;
+
+        const date = new Date(value);
+
+        if (Number.isNaN(date.getTime())) {
+          return null;
+        }
+
+        return date.toISOString();
+      }
+
+      function numberValue(value) {
+        const number = Number(value);
+
+        return Number.isFinite(number)
+          ? number
+          : 0;
+      }
+
+      function loadLocalData() {
+        localRepairs = safeParse(
+          localStorage.getItem(REPAIRS_KEY),
+          []
+        );
+
+        localSettings = safeParse(
+          localStorage.getItem(SETTINGS_KEY),
+          {}
+        );
+
+        if (!Array.isArray(localRepairs)) {
+          localRepairs = [];
+        }
+
+        repairCount.textContent =
+          localRepairs.length;
+
+        logBox.textContent = "";
+
+        log(
+          `Found ${localRepairs.length} local repair ticket(s).`
+        );
+
+        if (localRepairs.length === 0) {
+          log(
+            "No repair tickets were found in localStorage."
+          );
+        }
+      }
+
+      async function checkLogin() {
+        const {
+          data: { session },
+          error,
+        } = await supabase.auth.getSession();
+
+        if (error) {
+          loginStatus.textContent = "Error";
+          loginStatus.className = "error";
+
+          log(
+            "Login check failed: " +
+              error.message
+          );
+
+          return false;
+        }
+
+        if (!session) {
+          loginStatus.textContent =
+            "Not Signed In";
+
+          loginStatus.className =
+            "warning";
+
+          log(
+            "No Supabase login session found. Open login-test.html and sign in first."
+          );
+
+          return false;
+        }
+
+        loginStatus.textContent =
+          "Connected";
+
+        loginStatus.className =
+          "success";
+
+        log(
+          `Supabase user authenticated: ${session.user.email}`
+        );
+
+        return true;
+      }
+
+      function downloadBackup() {
+        const backup = {
+          createdAt:
+            new Date().toISOString(),
+
+          source:
+            "MicrotechUSA localStorage",
+
+          repairs:
+            localRepairs,
+
+          settings:
+            localSettings,
+        };
+
+        const blob =
+          new Blob(
+            [
+              JSON.stringify(
+                backup,
+                null,
+                2
+              ),
+            ],
+            {
+              type: "application/json",
+            }
+          );
+
+        const url =
+          URL.createObjectURL(blob);
+
+        const link =
+          document.createElement("a");
+
+        link.href = url;
+
+        link.download =
+          `microtechusa-backup-${new Date()
+            .toISOString()
+            .slice(0, 10)}.json`;
+
+        document.body.appendChild(link);
+
+        link.click();
+
+        link.remove();
+
+        URL.revokeObjectURL(url);
+
+        log(
+          "Backup JSON downloaded successfully."
+        );
+      }
+
+      async function findOrCreateCustomer(
+        repair
+      ) {
+        const name =
+          repair.customer?.trim() ||
+          "Unknown Customer";
+
+        const phone =
+          repair.phone?.trim() ||
+          null;
+
+        let query =
+          supabase
+            .from("customers")
+            .select(
+              "id,name,phone"
+            )
+            .limit(1);
+
+        if (phone) {
+          query =
+            query.eq(
+              "phone",
+              phone
+            );
+        } else {
+          query =
+            query.eq(
+              "name",
+              name
+            );
+        }
+
+        const {
+          data: existing,
+          error: findError,
+        } = await query;
+
+        if (findError) {
+          throw new Error(
+            "Customer lookup failed: " +
+              findError.message
+          );
+        }
+
+        if (
+          existing &&
+          existing.length > 0
+        ) {
+          return existing[0].id;
+        }
+
+        const {
+          data: created,
+          error: createError,
+        } = await supabase
+          .from("customers")
+          .insert({
+            name,
+            phone,
+          })
+          .select("id")
+          .single();
+
+        if (createError) {
+          throw new Error(
+            "Customer creation failed: " +
+              createError.message
+          );
+        }
+
+        return created.id;
+      }
+
+      async function migrateRepair(
+        repair
+      ) {
+        const customerId =
+          await findOrCreateCustomer(
+            repair
+          );
+
+        const payments =
+          Array.isArray(
+            repair.payments
+          )
+            ? repair.payments
+            : [];
+
+        const paid =
+          payments.reduce(
+            (sum, payment) =>
+              sum +
+              numberValue(
+                payment.amount
+              ),
+            0
+          );
+
+        const partsCost =
+          numberValue(
+            repair.partsCost
+          );
+
+        const labor =
+          numberValue(
+            repair.labor
+          );
+
+        const total =
+          partsCost + labor;
+
+        const balance =
+          Math.max(
+            total - paid,
+            0
+          );
+
+        const repairRecord = {
+          ticket_number:
+            repair.id,
+
+          customer_id:
+            customerId,
+
+          customer_name:
+            repair.customer ||
+            "Unknown Customer",
+
+          phone:
+            repair.phone || null,
+
+          device_type:
+            repair.deviceType ||
+            null,
+
+          brand:
+            repair.brand || null,
+
+          model:
+            repair.model || null,
+
+          serial_imei:
+            repair.serial || null,
+
+          issue:
+            repair.issue || null,
+
+          diagnosis:
+            repair.diagnosis ||
+            null,
+
+          accessories:
+            repair.accessories ||
+            null,
+
+          device_condition:
+            repair.condition ||
+            null,
+
+          technician:
+            repair.technician ||
+            null,
+
+          estimated_completion:
+            repair.estimatedCompletion ||
+            null,
+
+          parts_cost:
+            partsCost,
+
+          labor,
+          total,
+          paid,
+          balance,
+
+          passcode:
+            repair.passcode ||
+            null,
+
+          status:
+            repair.status ||
+            "Received",
+
+          priority:
+            repair.priority ||
+            "Normal",
+
+          warranty:
+            repair.warranty ||
+            "No Warranty",
+
+          approval:
+            repair.approval ||
+            "Pending",
+
+          parts_needed:
+            repair.partsNeeded ||
+            null,
+
+          internal_notes:
+            repair.internalNotes ||
+            null,
+
+          customer_notes:
+            repair.customerNotes ||
+            null,
+
+          check_in:
+            repair.checkIn || {},
+
+          intake_date:
+            toIsoDate(
+              repair.intakeDate
+            ) ||
+            new Date().toISOString(),
+
+          delivery_date:
+            toIsoDate(
+              repair.deliveryDate
+            ),
+
+          invoice_number:
+            repair.invoiceNumber ||
+            null,
+
+          reopened:
+            Boolean(
+              repair.reopened
+            ),
+        };
+
+        const {
+          data: savedRepair,
+          error: repairError,
+        } = await supabase
+          .from("repairs")
+          .upsert(
+            repairRecord,
+            {
+              onConflict:
+                "ticket_number",
+            }
+          )
+          .select("id,ticket_number")
+          .single();
+
+        if (repairError) {
+          throw new Error(
+            `${repair.id}: ${repairError.message}`
+          );
+        }
+
+        const repairUuid =
+          savedRepair.id;
+
+        /*
+          Remove existing child records before
+          re-inserting. This keeps migration safe
+          if the button is run more than once.
+        */
+
+        const childTables = [
+          "payments",
+          "repair_parts",
+          "repair_timeline",
+        ];
+
+        for (
+          const table of childTables
+        ) {
+          const { error } =
+            await supabase
+              .from(table)
+              .delete()
+              .eq(
+                "repair_id",
+                repairUuid
+              );
+
+          if (error) {
+            throw new Error(
+              `${repair.id}: unable to reset ${table}: ${error.message}`
+            );
+          }
+        }
+
+        if (payments.length > 0) {
+          const paymentRows =
+            payments.map(
+              (payment) => ({
+                repair_id:
+                  repairUuid,
+
+                amount:
+                  numberValue(
+                    payment.amount
+                  ),
+
+                method:
+                  payment.method ||
+                  "Other",
+
+                note:
+                  payment.note ||
+                  null,
+
+                paid_at:
+                  toIsoDate(
+                    payment.date
+                  ) ||
+                  new Date().toISOString(),
+              })
+            );
+
+          const {
+            error: paymentError,
+          } = await supabase
+            .from("payments")
+            .insert(paymentRows);
+
+          if (paymentError) {
+            throw new Error(
+              `${repair.id} payments: ${paymentError.message}`
+            );
+          }
+        }
+
+        const orderedParts =
+          Array.isArray(
+            repair.orderedParts
+          )
+            ? repair.orderedParts
+            : [];
+
+        if (
+          orderedParts.length > 0
+        ) {
+          const partRows =
+            orderedParts.map(
+              (part) => ({
+                repair_id:
+                  repairUuid,
+
+                name:
+                  part.name ||
+                  "Part",
+
+                supplier:
+                  part.supplier ||
+                  null,
+
+                cost:
+                  numberValue(
+                    part.cost
+                  ),
+
+                tracking_number:
+                  part.tracking ||
+                  null,
+
+                status:
+                  part.status ||
+                  "Needed",
+
+                created_at:
+                  toIsoDate(
+                    part.date
+                  ) ||
+                  new Date().toISOString(),
+              })
+            );
+
+          const {
+            error: partError,
+          } = await supabase
+            .from(
+              "repair_parts"
+            )
+            .insert(partRows);
+
+          if (partError) {
+            throw new Error(
+              `${repair.id} parts: ${partError.message}`
+            );
+          }
+        }
+
+        const timeline =
+          Array.isArray(
+            repair.timeline
+          )
+            ? repair.timeline
+            : [];
+
+        if (timeline.length > 0) {
+          const timelineRows =
+            timeline.map(
+              (entry) => ({
+                repair_id:
+                  repairUuid,
+
+                event_text:
+                  entry.text ||
+                  "Repair update",
+
+                created_at:
+                  toIsoDate(
+                    entry.date
+                  ) ||
+                  new Date().toISOString(),
+              })
+            );
+
+          const {
+            error: timelineError,
+          } = await supabase
+            .from(
+              "repair_timeline"
+            )
+            .insert(
+              timelineRows
+            );
+
+          if (timelineError) {
+            throw new Error(
+              `${repair.id} timeline: ${timelineError.message}`
+            );
+          }
+        }
+
+        return savedRepair;
+      }
+
+      async function migrateSettings() {
+        if (
+          !localSettings ||
+          Object.keys(
+            localSettings
+          ).length === 0
+        ) {
+          log(
+            "No local business settings found."
+          );
+
+          return;
+        }
+
+        const {
+          error: deleteError,
+        } = await supabase
+          .from(
+            "business_settings"
+          )
+          .delete()
+          .neq(
+            "id",
+            "00000000-0000-0000-0000-000000000000"
+          );
+
+        if (deleteError) {
+          throw new Error(
+            "Unable to prepare business settings: " +
+              deleteError.message
+          );
+        }
+
+        const {
+          error: settingsError,
+        } = await supabase
+          .from(
+            "business_settings"
+          )
+          .insert({
+            business_name:
+              localSettings.businessName ||
+              "MicrotechUSA",
+
+            subtitle:
+              localSettings.subtitle ||
+              "Repair Center",
+
+            phone:
+              localSettings.phone ||
+              null,
+
+            email:
+              localSettings.email ||
+              null,
+
+            address:
+              localSettings.address ||
+              null,
+
+            default_warranty:
+              localSettings.defaultWarranty ||
+              "90 Days",
+          });
+
+        if (settingsError) {
+          throw new Error(
+            "Settings migration failed: " +
+              settingsError.message
+          );
+        }
+      }
+
+      async function migrateEverything() {
+        const confirmed =
+          window.confirm(
+            `Migrate ${localRepairs.length} repair ticket(s) to Supabase?\n\nYour local browser data will NOT be deleted.`
+          );
+
+        if (!confirmed) {
+          return;
+        }
+
+        migrateButton.disabled =
+          true;
+
+        backupButton.disabled =
+          true;
+
+        migrationStatus.textContent =
+          "Working...";
+
+        migrationStatus.className =
+          "warning";
+
+        log(
+          "Starting Supabase migration..."
+        );
+
+        let migrated = 0;
+
+        try {
+          for (
+            const repair of localRepairs
+          ) {
+            log(
+              `Migrating ${repair.id}...`
+            );
+
+            await migrateRepair(
+              repair
+            );
+
+            migrated += 1;
+
+            log(
+              `✅ ${repair.id} migrated successfully.`
+            );
+          }
+
+          log(
+            "Migrating business settings..."
+          );
+
+          await migrateSettings();
+
+          migrationStatus.textContent =
+            "Completed";
+
+          migrationStatus.className =
+            "success";
+
+          log("");
+          log(
+            `✅ MIGRATION COMPLETE: ${migrated} repair ticket(s).`
+          );
+
+          log(
+            "Local browser data was NOT deleted."
+          );
+
+          alert(
+            `Migration completed successfully.\n\n${migrated} repair ticket(s) migrated.`
+          );
+        } catch (error) {
+          migrationStatus.textContent =
+            "Error";
+
+          migrationStatus.className =
+            "error";
+
+          log("");
+          log(
+            "❌ MIGRATION STOPPED:"
+          );
+
+          log(
+            error.message
+          );
+
+          alert(
+            "Migration stopped because of an error.\n\nYour local data is still safe."
+          );
+        } finally {
+          migrateButton.disabled =
+            false;
+
+          backupButton.disabled =
+            false;
+        }
+      }
+
+      backupButton.addEventListener(
+        "click",
+        downloadBackup
+      );
+
+      migrateButton.addEventListener(
+        "click",
+        migrateEverything
+      );
+
+      async function initialize() {
+        loadLocalData();
+
+        const loggedIn =
+          await checkLogin();
+
+        if (
+          loggedIn &&
+          localRepairs.length > 0
+        ) {
+          migrateButton.disabled =
+            false;
+
+          log(
+            "Ready to migrate."
+          );
+        } else if (
+          loggedIn &&
+          localRepairs.length === 0
+        ) {
+          log(
+            "Connected, but no local repair tickets were found."
+          );
+        }
+      }
+
+      initialize();
+    </script>
+  </body>
+</html>

@@ -1,0 +1,47 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta
+      name="viewport"
+      content="width=device-width, initial-scale=1.0"
+    />
+    <title>MicrotechUSA - Supabase Test</title>
+  </head>
+
+  <body>
+    <h1>MicrotechUSA Supabase Test</h1>
+    <p id="status">Testing connection...</p>
+
+    <script type="module">
+      import { supabase } from "./src/supabase.js";
+
+      const status = document.getElementById("status");
+
+      async function testConnection() {
+        try {
+          const { data, error } = await supabase
+            .from("repairs")
+            .select("id")
+            .limit(1);
+
+          if (error) {
+            status.textContent =
+              "❌ SUPABASE ERROR: " + error.message;
+            return;
+          }
+
+          status.textContent =
+            "✅ SUPABASE CONNECTED SUCCESSFULLY";
+
+          console.log("Supabase data:", data);
+        } catch (error) {
+          status.textContent =
+            "❌ CONNECTION FAILED: " + error.message;
+        }
+      }
+
+      testConnection();
+    </script>
+  </body>
+</html>
