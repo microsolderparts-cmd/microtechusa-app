@@ -384,6 +384,116 @@ function App() {
   const [cloudReady, setCloudReady] =
     useState(false);
 
+  const [currentProfile, setCurrentProfile] =
+    useState(null);
+
+  const [profileLoading, setProfileLoading] =
+    useState(true);
+
+  const currentRole =
+    currentProfile?.role || "";
+
+  const isOwner =
+    currentRole === "owner";
+
+  const isTechnician =
+    currentRole === "technician";
+
+  const isFrontDesk =
+    currentRole === "front_desk";
+
+  const canCreateRepair =
+    isOwner || isFrontDesk;
+
+  const canManagePayments =
+    isOwner || isFrontDesk;
+
+  const canManageParts =
+    isOwner || isTechnician;
+
+  const canAccessPayments =
+    isOwner || isFrontDesk;
+
+  const canAccessSettings =
+    isOwner;
+
+  const canEditInternalNotes =
+    isOwner || isTechnician;
+
+  useEffect(() => {
+    let cancelled = false;
+
+    async function loadCurrentProfile() {
+      try {
+        const {
+          data: { session },
+          error: sessionError,
+        } = await supabase.auth.getSession();
+
+        if (sessionError) {
+          throw sessionError;
+        }
+
+        if (!session) {
+          if (!cancelled) {
+            setCurrentProfile(null);
+            setProfileLoading(false);
+          }
+
+          return;
+        }
+
+        const {
+          data: profile,
+          error: profileError,
+        } = await supabase
+          .from("profiles")
+          .select(
+            "email, full_name, role, active"
+          )
+          .eq("id", session.user.id)
+          .single();
+
+        if (profileError) {
+          throw profileError;
+        }
+
+        if (!cancelled) {
+          setCurrentProfile(profile);
+        }
+      } catch (error) {
+        console.error(
+          "Profile load failed:",
+          error
+        );
+
+        if (!cancelled) {
+          setCurrentProfile(null);
+        }
+      } finally {
+        if (!cancelled) {
+          setProfileLoading(false);
+        }
+      }
+    }
+
+    loadCurrentProfile();
+
+    const {
+      data: { subscription },
+    } = supabase.auth.onAuthStateChange(
+      () => {
+        setProfileLoading(true);
+        loadCurrentProfile();
+      }
+    );
+
+    return () => {
+      cancelled = true;
+      subscription.unsubscribe();
+    };
+  }, []);
+
   useEffect(() => {
     let cancelled = false;
 
@@ -428,6 +538,29 @@ function App() {
       cancelled = true;
     };
   }, []);
+
+  useEffect(() => {
+    if (profileLoading) return;
+
+    if (
+      activeSection === "Payments" &&
+      !canAccessPayments
+    ) {
+      setActiveSection("Dashboard");
+    }
+
+    if (
+      activeSection === "Settings" &&
+      !canAccessSettings
+    ) {
+      setActiveSection("Dashboard");
+    }
+  }, [
+    activeSection,
+    profileLoading,
+    canAccessPayments,
+    canAccessSettings,
+  ]);
 
   useEffect(() => {
     localStorage.setItem(
@@ -1568,20 +1701,22 @@ function App() {
           />
         </div>
 
-        <div className="form-group full-width">
-          <label>
-            Internal Technician Notes
-          </label>
+        {canEditInternalNotes && (
+          <div className="form-group full-width">
+            <label>
+              Internal Technician Notes
+            </label>
 
-          <textarea
-            name="internalNotes"
-            value={
-              data.internalNotes || ""
-            }
-            onChange={onChange}
-            rows="3"
-          />
-        </div>
+            <textarea
+              name="internalNotes"
+              value={
+                data.internalNotes || ""
+              }
+              onChange={onChange}
+              rows="3"
+            />
+          </div>
+        )}
 
         <div className="form-group full-width">
           <label>
@@ -1798,14 +1933,16 @@ function App() {
             </p>
           </div>
 
-          <button
-            className="primary-btn"
-            onClick={() =>
-              setShowModal(true)
-            }
-          >
-            + New Repair
-          </button>
+          {canCreateRepair && (
+            <button
+              className="primary-btn"
+              onClick={() =>
+                setShowModal(true)
+              }
+            >
+              + New Repair
+            </button>
+          )}
         </header>
 
         <div className="global-search-box">
@@ -1875,24 +2012,26 @@ function App() {
             </div>
           </div>
 
-          <div className="metric-card">
-            <span className="metric-icon">
-              💰
-            </span>
-
-            <div>
-              <span>
-                Revenue Today
+          {canAccessPayments && (
+            <div className="metric-card">
+              <span className="metric-icon">
+                💰
               </span>
 
-              <strong>
-                $
-                {money(
-                  revenueToday
-                )}
-              </strong>
+              <div>
+                <span>
+                  Revenue Today
+                </span>
+
+                <strong>
+                  $
+                  {money(
+                    revenueToday
+                  )}
+                </strong>
+              </div>
             </div>
-          </div>
+          )}
 
           <div className="metric-card">
             <span className="metric-icon">
@@ -1945,24 +2084,26 @@ function App() {
             </div>
           </div>
 
-          <div className="metric-card">
-            <span className="metric-icon">
-              🏦
-            </span>
-
-            <div>
-              <span>
-                Total Collected
+          {canAccessPayments && (
+            <div className="metric-card">
+              <span className="metric-icon">
+                🏦
               </span>
 
-              <strong>
-                $
-                {money(
-                  totalCollected
-                )}
-              </strong>
+              <div>
+                <span>
+                  Total Collected
+                </span>
+
+                <strong>
+                  $
+                  {money(
+                    totalCollected
+                  )}
+                </strong>
+              </div>
             </div>
-          </div>
+          )}
         </section>
 
         <section className="dashboard-two-column">
@@ -1996,12 +2137,13 @@ function App() {
             )}
           </div>
 
-          <div className="content-card recent-payments-card">
-            <div className="content-header">
-              <div>
-                <h2>
-                  Recent Payments
-                </h2>
+          {canAccessPayments && (
+            <div className="content-card recent-payments-card">
+              <div className="content-header">
+                <div>
+                  <h2>
+                    Recent Payments
+                  </h2>
 
                 <p>
                   Latest customer
@@ -2074,9 +2216,10 @@ function App() {
                   No payments recorded
                   yet.
                 </div>
-              )}
+                )}
+              </div>
             </div>
-          </div>
+          )}
         </section>
 
         <section className="content-card device-section">
@@ -2142,14 +2285,16 @@ function App() {
             </p>
           </div>
 
-          <button
-            className="primary-btn"
-            onClick={() =>
-              setShowModal(true)
-            }
-          >
-            + New Repair
-          </button>
+          {canCreateRepair && (
+            <button
+              className="primary-btn"
+              onClick={() =>
+                setShowModal(true)
+              }
+            >
+              + New Repair
+            </button>
+          )}
         </header>
 
         <section className="content-card">
@@ -2804,8 +2949,12 @@ function App() {
             "Repairs",
             "Customers",
             "Invoices",
-            "Payments",
-            "Settings",
+            ...(canAccessPayments
+              ? ["Payments"]
+              : []),
+            ...(canAccessSettings
+              ? ["Settings"]
+              : []),
           ].map((section) => (
             <button
               key={section}
@@ -2831,6 +2980,65 @@ function App() {
             </button>
           ))}
         </nav>
+
+        <div
+          style={{
+            margin: "12px 0",
+            padding: "12px",
+            borderRadius: "10px",
+            background: "rgba(255, 255, 255, 0.06)",
+            border: "1px solid rgba(255, 255, 255, 0.08)",
+          }}
+        >
+          <span
+            style={{
+              display: "block",
+              fontSize: "11px",
+              opacity: 0.65,
+              marginBottom: "5px",
+              textTransform: "uppercase",
+              letterSpacing: "0.05em",
+            }}
+          >
+            Signed in as
+          </span>
+
+          <strong
+            style={{
+              display: "block",
+              fontSize: "13px",
+              marginBottom: "4px",
+              wordBreak: "break-word",
+            }}
+          >
+            {profileLoading
+              ? "Loading profile..."
+              : currentProfile?.full_name ||
+                currentProfile?.email ||
+                "User"}
+          </strong>
+
+          <span
+            style={{
+              display: "block",
+              fontSize: "12px",
+              opacity: 0.8,
+            }}
+          >
+            {profileLoading
+              ? "Checking role..."
+              : currentProfile?.role ===
+                  "owner"
+                ? "Owner"
+                : currentProfile?.role ===
+                    "technician"
+                  ? "Technician"
+                  : currentProfile?.role ===
+                      "front_desk"
+                    ? "Front Desk"
+                    : "Role unavailable"}
+          </span>
+        </div>
 
         <button
           className="nav-item"
@@ -2880,14 +3088,17 @@ function App() {
 
         {activeSection ===
           "Payments" &&
+          canAccessPayments &&
           renderPayments()}
 
         {activeSection ===
           "Settings" &&
+          canAccessSettings &&
           renderSettings()}
       </main>
 
-      {showModal && (
+      {showModal &&
+        canCreateRepair && (
         <div className="modal-overlay">
           <div className="modal">
             <div className="modal-header">
@@ -3181,7 +3392,8 @@ function App() {
                     💳 Payments
                   </h3>
 
-                  <div className="payment-entry">
+                  {canManagePayments && (
+                    <div className="payment-entry">
                     <input
                       type="number"
                       step="0.01"
@@ -3275,7 +3487,8 @@ function App() {
                       + Add
                       Payment
                     </button>
-                  </div>
+                    </div>
+                  )}
 
                   {(editForm.payments ||
                     []).map(
@@ -3327,7 +3540,8 @@ function App() {
                     Ordered
                   </h3>
 
-                  <div className="parts-entry">
+                  {canManageParts && (
+                    <div className="parts-entry">
                     <input
                       placeholder="Part"
                       value={
@@ -3464,7 +3678,8 @@ function App() {
                     >
                       + Add Part
                     </button>
-                  </div>
+                    </div>
+                  )}
 
                   {(editForm.orderedParts ||
                     []).map(
@@ -3503,37 +3718,43 @@ function App() {
                           </span>
                         </div>
 
-                        <select
-                          value={
-                            part.status
-                          }
-                          onChange={(
-                            event
-                          ) =>
-                            changePartStatus(
-                              part.id,
+                        {canManageParts ? (
+                          <select
+                            value={
+                              part.status
+                            }
+                            onChange={(
                               event
-                                .target
-                                .value
-                            )
-                          }
-                        >
-                          {PART_STATUSES.map(
-                            (
-                              status
-                            ) => (
-                              <option
-                                key={
-                                  status
-                                }
-                              >
-                                {
-                                  status
-                                }
-                              </option>
-                            )
-                          )}
-                        </select>
+                            ) =>
+                              changePartStatus(
+                                part.id,
+                                event
+                                  .target
+                                  .value
+                              )
+                            }
+                          >
+                            {PART_STATUSES.map(
+                              (
+                                status
+                              ) => (
+                                <option
+                                  key={
+                                    status
+                                  }
+                                >
+                                  {
+                                    status
+                                  }
+                                </option>
+                              )
+                            )}
+                          </select>
+                        ) : (
+                          <span>
+                            {part.status}
+                          </span>
+                        )}
                       </div>
                     )
                   )}

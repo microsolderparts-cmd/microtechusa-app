@@ -1,0 +1,137 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta
+      name="viewport"
+      content="width=device-width, initial-scale=1.0"
+    />
+    <title>MicrotechUSA Role Test</title>
+
+    <style>
+      body {
+        font-family: Arial, Helvetica, sans-serif;
+        background: #f4f6f8;
+        margin: 0;
+        min-height: 100vh;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        padding: 20px;
+      }
+
+      .card {
+        width: 100%;
+        max-width: 480px;
+        background: white;
+        border-radius: 16px;
+        padding: 28px;
+        box-shadow: 0 10px 35px rgba(0, 0, 0, 0.08);
+      }
+
+      h1 {
+        margin-top: 0;
+      }
+
+      .status {
+        margin-top: 20px;
+        padding: 14px;
+        border-radius: 10px;
+        background: #f8fafc;
+        white-space: pre-wrap;
+      }
+
+      .success {
+        color: #047857;
+      }
+
+      .error {
+        color: #b91c1c;
+      }
+    </style>
+  </head>
+
+  <body>
+    <div class="card">
+      <h1>MicrotechUSA</h1>
+      <p>Role Test</p>
+
+      <div id="status" class="status">
+        Checking session and role...
+      </div>
+    </div>
+
+    <script type="module">
+      import { supabase } from "./src/supabase.js";
+
+      const status =
+        document.getElementById("status");
+
+      async function checkRole() {
+        try {
+          const {
+            data: { session },
+            error: sessionError,
+          } = await supabase.auth.getSession();
+
+          if (sessionError) {
+            throw sessionError;
+          }
+
+          if (!session) {
+            status.className =
+              "status error";
+
+            status.textContent =
+              "❌ No active login session.";
+            return;
+          }
+
+          const {
+            data: profile,
+            error: profileError,
+          } = await supabase
+            .from("profiles")
+            .select(
+              "email, full_name, role, active"
+            )
+            .eq(
+              "id",
+              session.user.id
+            )
+            .single();
+
+          if (profileError) {
+            throw profileError;
+          }
+
+          status.className =
+            "status success";
+
+          status.textContent =
+            "✅ SESSION FOUND\n\n" +
+            "Email: " +
+            profile.email +
+            "\n" +
+            "Name: " +
+            profile.full_name +
+            "\n" +
+            "Role: " +
+            profile.role +
+            "\n" +
+            "Active: " +
+            profile.active;
+        } catch (error) {
+          status.className =
+            "status error";
+
+          status.textContent =
+            "❌ ERROR: " +
+            error.message;
+        }
+      }
+
+      checkRole();
+    </script>
+  </body>
+</html>
