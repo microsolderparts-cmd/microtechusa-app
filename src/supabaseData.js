@@ -151,6 +151,7 @@ export async function loadRepairsFromSupabase() {
 
     return {
       id: row.ticket_number,
+      customerId: row.customer_id || "",
       customer: row.customer_name || "",
       phone: row.phone || "",
       deviceType: row.device_type || "Other",
@@ -464,6 +465,87 @@ export async function syncRepairsToSupabase(repairs) {
   }
 }
 
+export async function loadCustomersFromSupabase() {
+  await requireSession();
+
+  const { data, error } = await supabase
+    .from("customers")
+    .select("id, name, phone, email")
+    .order("name", { ascending: true });
+
+  if (error) throw error;
+
+  return data || [];
+}
+
+export async function updateCustomerProfileInSupabase(customer) {
+  const { role } = await getCurrentProfile();
+
+  if (
+    role !== "owner" &&
+    role !== "front_desk"
+  ) {
+    throw new Error(
+      "You do not have permission to edit customers."
+    );
+  }
+
+  if (!customer?.id) {
+    throw new Error(
+      "Customer ID is required."
+    );
+  }
+
+  const name =
+    customer.name?.trim() ||
+    "Unknown Customer";
+
+  const phone =
+    customer.phone?.trim() || null;
+
+  const email =
+    customer.email?.trim() || null;
+
+  const { error: customerError } =
+    await supabase
+      .from("customers")
+      .update({
+        name,
+        phone,
+        email,
+        updated_at:
+          new Date().toISOString(),
+      })
+      .eq("id", customer.id);
+
+  if (customerError) {
+    throw customerError;
+  }
+
+  const { error: repairError } =
+    await supabase
+      .from("repairs")
+      .update({
+        customer_name: name,
+        phone,
+      })
+      .eq(
+        "customer_id",
+        customer.id
+      );
+
+  if (repairError) {
+    throw repairError;
+  }
+
+  return {
+    id: customer.id,
+    name,
+    phone: phone || "",
+    email: email || "",
+  };
+}
+
 export async function loadBusinessSettingsFromSupabase() {
   await requireSession();
 
@@ -486,13 +568,13 @@ export async function loadBusinessSettingsFromSupabase() {
     email: row.email || "",
     address: row.address || "",
     defaultWarranty: row.default_warranty || "90 Days",
+    taxRate: Number(row.tax_rate) || 0,
   };
 }
 
 export async function saveBusinessSettingsToSupabase(settings) {
   const { role } = await getCurrentProfile();
 
-  // Only Owner is allowed to save business settings.
   if (role !== "owner") {
     return;
   }
@@ -513,6 +595,8 @@ export async function saveBusinessSettingsToSupabase(settings) {
     address: settings.address || null,
     default_warranty:
       settings.defaultWarranty || "90 Days",
+    tax_rate:
+      Math.max(0, Number(settings.taxRate) || 0),
     updated_at: new Date().toISOString(),
   };
 
@@ -533,10 +617,569 @@ export async function saveBusinessSettingsToSupabase(settings) {
   if (error) throw error;
 }
 
+export async function deleteRepairFromSupabase(ticketNumber) {
+  const { role } = await getCurrentProfile();
+
+  if (role !== "owner") {
+    throw new Error("Only the Owner can delete repairs.");
+  }
+
+  const { data: repairs, error: findError } = await supabase
+    .from("repairs")
+    .select("id")
+    .eq("ticket_number", ticketNumber)
+    .limit(1);
+
+  if (findError) throw findError;
+
+  const repairId = repairs?.[0]?.id;
+
+  if (!repairId) {
+    throw new Error("Repair not found in Supabase.");
+  }
+
+  const { error: paymentsError } = await supabase
+    .from("payments")
+    .delete()
+    .eq("repair_id", repairId);
+
+  if (paymentsError) throw paymentsError;
+
+  const { error: partsError } = await supabase
+    .from("repair_parts")
+    .delete()
+    .eq("repair_id", repairId);
+
+  if (partsError) throw partsError;
+
+  const { error: timelineError } = await supabase
+    .from("repair_timeline")
+    .delete()
+    .eq("repair_id", repairId);
+
+  if (timelineError) throw timelineError;
+
+  const { error: repairError } = await supabase
+    .from("repairs")
+    .delete()
+    .eq("id", repairId);
+
+  if (repairError) throw repairError;
+
+  return true;
+}
+export async function getNextInvoiceNumberFromSupabase() {
+  await requireSession();
+
+  const { data, error } = await supabase.rpc(
+    "get_next_invoice_number"
+  );
+
+  if (error) throw error;
+
+  const number = Number(data);
+
+  if (!Number.isInteger(number) || number < 1) {
+    throw new Error(
+      "Supabase returned an invalid invoice number."
+    );
+  }
+
+  return number;
+}
+
+export async function getNextRepairNumberFromSupabase() {
+  await requireSession();
+
+  const { data, error } = await supabase.rpc(
+    "get_next_repair_number"
+  );
+
+  if (error) throw error;
+
+  const number = Number(data);
+
+  if (!Number.isInteger(number) || number < 1) {
+    throw new Error(
+      "Supabase returned an invalid repair number."
+    );
+  }
+
+  return number;
+}
+
+
 export async function getSupabaseSession() {
   const {
     data: { session },
   } = await supabase.auth.getSession();
 
   return session;
+}
+/* =========================
+   INVENTORY V1
+========================= */
+
+export async function loadInventoryFromSupabase() {
+  await requireSession();
+
+  const { data, error } = await supabase
+    .from("inventory")
+    .select("*")
+    .eq("active", true)
+    .order("name", { ascending: true });
+
+  if (error) throw error;
+
+  return (data || []).map((item) => ({
+    id: item.id,
+    sku: item.sku || "",
+    name: item.name || "",
+    category: item.category || "",
+    brandModel: item.brand_model || "",
+    quantity: Number(item.quantity) || 0,
+    minStock: Number(item.min_stock) || 0,
+    cost: Number(item.cost) || 0,
+    salePrice: Number(item.sale_price) || 0,
+    supplier: item.supplier || "",
+    location: item.location || "",
+    active: item.active !== false,
+  }));
+}
+
+export async function saveInventoryItemToSupabase(item) {
+  await requireSession();
+
+  const record = {
+    sku: item.sku?.trim() || null,
+    name: item.name?.trim() || "Unnamed Item",
+    category: item.category?.trim() || null,
+    brand_model: item.brandModel?.trim() || null,
+    quantity: Math.max(0, Number(item.quantity) || 0),
+    min_stock: Math.max(0, Number(item.minStock) || 0),
+    cost: Math.max(0, Number(item.cost) || 0),
+    sale_price: Math.max(0, Number(item.salePrice) || 0),
+    supplier: item.supplier?.trim() || null,
+    location: item.location?.trim() || null,
+    active: item.active !== false,
+    updated_at: new Date().toISOString(),
+  };
+
+  if (item.id) {
+    const { data, error } = await supabase
+      .from("inventory")
+      .update(record)
+      .eq("id", item.id)
+      .select("*")
+      .single();
+
+    if (error) throw error;
+
+    return data;
+  }
+
+  const { data, error } = await supabase
+    .from("inventory")
+    .insert(record)
+    .select("*")
+    .single();
+
+  if (error) throw error;
+
+  return data;
+}
+
+export async function deleteInventoryItemFromSupabase(id) {
+  await requireSession();
+
+  if (!id) {
+    throw new Error("Inventory item ID is required.");
+  }
+
+  const { error } = await supabase
+    .from("inventory")
+    .delete()
+    .eq("id", id);
+
+  if (error) throw error;
+
+  return true;
+}
+
+/* =========================
+   POS V1
+========================= */
+
+export async function loadSalesFromSupabase() {
+  await requireSession();
+
+  const { data, error } = await supabase
+    .from("sales")
+    .select(`
+      *,
+      sale_items (*)
+    `)
+    .order("created_at", { ascending: false });
+
+  if (error) throw error;
+
+  return (data || []).map((sale) => ({
+    id: sale.id,
+    saleNumber: sale.sale_number,
+    customerName: sale.customer_name || "",
+    paymentMethod: sale.payment_method || "Cash",
+    subtotal: numberValue(sale.subtotal),
+    total: numberValue(sale.total),
+    date: toLocalDate(sale.created_at),
+    items: (sale.sale_items || []).map((item) => ({
+      id: item.id,
+      inventoryId: item.inventory_id || "",
+      sku: item.sku || "",
+      name: item.name || "",
+      quantity: Number(item.quantity) || 1,
+      unitPrice: numberValue(item.unit_price),
+      lineTotal: numberValue(item.line_total),
+    })),
+  }));
+}
+
+export async function createSaleInSupabase(sale) {
+  await requireSession();
+
+  if (!Array.isArray(sale.items) || sale.items.length === 0) {
+    throw new Error("Sale must include at least one item.");
+  }
+
+  const subtotal = sale.items.reduce(
+    (sum, item) =>
+      sum +
+      numberValue(item.unitPrice) *
+        Math.max(1, Number(item.quantity) || 1),
+    0
+  );
+
+  const taxExempt = Boolean(sale.taxExempt);
+
+  const taxRate = taxExempt
+    ? 0
+    : Math.max(0, numberValue(sale.taxRate));
+
+  const taxAmount = taxExempt
+    ? 0
+    : numberValue(sale.taxAmount);
+
+  const total =
+    numberValue(sale.total) ||
+    subtotal + taxAmount;
+
+  const {
+    data: openCashSessions,
+    error: cashSessionError,
+  } = await supabase
+    .from("cash_sessions")
+    .select("id")
+    .eq("status", "Open")
+    .order("opened_at", {
+      ascending: false,
+    })
+    .limit(1);
+
+  if (cashSessionError) {
+    throw cashSessionError;
+  }
+
+  const cashSessionId =
+    openCashSessions?.[0]?.id || null;
+
+  const { data: createdSale, error: saleError } =
+    await supabase
+      .from("sales")
+      .insert({
+        sale_number: sale.saleNumber,
+        customer_name:
+          sale.customerName?.trim() || null,
+        payment_method:
+          sale.paymentMethod || "Cash",
+        cash_session_id: cashSessionId,
+        subtotal,
+        tax_exempt: taxExempt,
+        tax_rate: taxRate,
+        tax_amount: taxAmount,
+        tax_exempt_reason:
+          taxExempt
+            ? sale.taxExemptReason?.trim() || null
+            : null,
+        total,
+      })
+      .select("id")
+      .single();
+
+  if (saleError) throw saleError;
+
+  const saleItems = sale.items.map((item) => {
+    const quantity =
+      Math.max(1, Number(item.quantity) || 1);
+
+    const unitPrice =
+      numberValue(item.unitPrice);
+
+    return {
+      sale_id: createdSale.id,
+      inventory_id:
+        item.inventoryId || null,
+      sku: item.sku || null,
+      name: item.name || "Item",
+      quantity,
+      unit_price: unitPrice,
+      line_total:
+        quantity * unitPrice,
+    };
+  });
+
+  const { error: itemsError } = await supabase
+    .from("sale_items")
+    .insert(saleItems);
+
+  if (itemsError) throw itemsError;
+
+  return {
+    id: createdSale.id,
+    subtotal,
+    taxExempt,
+    taxRate,
+    taxAmount,
+    total,
+  };
+}
+
+/* =========================
+   CASH MANAGEMENT V1
+========================= */
+
+export async function getOpenCashSessionFromSupabase() {
+  const session = await requireSession();
+
+  const { data, error } = await supabase
+    .from("cash_sessions")
+    .select(`
+      *,
+      cash_movements (*)
+    `)
+    .eq("status", "Open")
+    .order("opened_at", { ascending: false })
+    .limit(1);
+
+  if (error) throw error;
+
+  return data?.[0] || null;
+}
+
+export async function openCashSessionInSupabase(
+  openingCash
+) {
+  const session = await requireSession();
+
+  const existing =
+    await getOpenCashSessionFromSupabase();
+
+  if (existing) {
+    throw new Error(
+      "There is already an open cash session."
+    );
+  }
+
+  const amount =
+    Math.max(0, Number(openingCash) || 0);
+
+  const { data, error } = await supabase
+    .from("cash_sessions")
+    .insert({
+      opened_by: session.user.id,
+      opening_cash: amount,
+      expected_cash: amount,
+      status: "Open",
+    })
+    .select("*")
+    .single();
+
+  if (error) throw error;
+
+  return data;
+}
+
+export async function addCashMovementToSupabase(
+  cashSessionId,
+  movement
+) {
+  const session = await requireSession();
+
+  if (!cashSessionId) {
+    throw new Error(
+      "Cash session is required."
+    );
+  }
+
+  const amount =
+    Math.max(0, Number(movement.amount) || 0);
+
+  if (amount <= 0) {
+    throw new Error(
+      "Movement amount must be greater than zero."
+    );
+  }
+
+  const { data, error } = await supabase
+    .from("cash_movements")
+    .insert({
+      cash_session_id: cashSessionId,
+      type: movement.type || "Other",
+      amount,
+      description:
+        movement.description?.trim() || null,
+      created_by: session.user.id,
+    })
+    .select("*")
+    .single();
+
+  if (error) throw error;
+
+  return data;
+}
+
+export async function closeCashSessionInSupabase(
+  cashSessionId,
+  countedCash,
+  notes = ""
+) {
+  const session = await requireSession();
+
+  if (!cashSessionId) {
+    throw new Error(
+      "Cash session is required."
+    );
+  }
+
+  const { data: cashSession, error: readError } =
+    await supabase
+      .from("cash_sessions")
+      .select("*")
+      .eq("id", cashSessionId)
+      .single();
+
+  if (readError) throw readError;
+
+  if (cashSession.status !== "Open") {
+    throw new Error(
+      "This cash session is already closed."
+    );
+  }
+
+  const { data: sales, error: salesError } =
+    await supabase
+      .from("sales")
+      .select(
+        "payment_method, total"
+      )
+      .eq(
+        "cash_session_id",
+        cashSessionId
+      );
+
+  if (salesError) throw salesError;
+
+  const { data: movements, error: movementError } =
+    await supabase
+      .from("cash_movements")
+      .select("type, amount")
+      .eq(
+        "cash_session_id",
+        cashSessionId
+      );
+
+  if (movementError) throw movementError;
+
+  const cashSales = (sales || [])
+    .filter(
+      (sale) =>
+        String(
+          sale.payment_method
+        ).toLowerCase() === "cash"
+    )
+    .reduce(
+      (sum, sale) =>
+        sum + numberValue(sale.total),
+      0
+    );
+
+  const cashIn = (movements || [])
+    .filter(
+      (movement) =>
+        String(
+          movement.type
+        ).toLowerCase() === "cash in"
+    )
+    .reduce(
+      (sum, movement) =>
+        sum + numberValue(movement.amount),
+      0
+    );
+
+  const cashOut = (movements || [])
+    .filter(
+      (movement) =>
+        String(
+          movement.type
+        ).toLowerCase() === "cash out"
+    )
+    .reduce(
+      (sum, movement) =>
+        sum + numberValue(movement.amount),
+      0
+    );
+
+  const expectedCash =
+    numberValue(
+      cashSession.opening_cash
+    ) +
+    cashSales +
+    cashIn -
+    cashOut;
+
+  const counted =
+    Math.max(
+      0,
+      Number(countedCash) || 0
+    );
+
+  const difference =
+    counted - expectedCash;
+
+  const { data, error } = await supabase
+    .from("cash_sessions")
+    .update({
+      closed_by: session.user.id,
+      closed_at:
+        new Date().toISOString(),
+      expected_cash: expectedCash,
+      counted_cash: counted,
+      difference,
+      status: "Closed",
+      notes:
+        notes?.trim() || null,
+    })
+    .eq("id", cashSessionId)
+    .select("*")
+    .single();
+
+  if (error) throw error;
+
+  return {
+    ...data,
+    cashSales,
+    cashIn,
+    cashOut,
+    expectedCash,
+    countedCash: counted,
+    difference,
+  };
 }
