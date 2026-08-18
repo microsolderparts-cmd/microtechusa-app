@@ -668,11 +668,9 @@ function App() {
 
         if (cancelled) return;
 
-        if (cloudRepairs.length > 0) {
-          setRepairs(
-            cloudRepairs.map(normalizeRepair)
-          );
-        }
+        setRepairs(
+          (cloudRepairs || []).map(normalizeRepair)
+        );
 
         if (cloudSettings) {
           setBusinessSettings(
