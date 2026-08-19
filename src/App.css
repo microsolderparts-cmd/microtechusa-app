@@ -2241,3 +2241,61 @@ tbody tr:hover {
     page-break-inside: avoid !important;
   }
 }
+/* LABEL */
+
+.label-modal {
+  width: 100%;
+  max-width: 620px;
+  background: white;
+  border-radius: 16px;
+  padding: 24px;
+}
+
+.device-label {
+  width: 4in;
+  min-height: 2in;
+  margin: 0 auto;
+  padding: 0.18in;
+  border: 2px solid #111827;
+  background: white;
+  color: #111827;
+  font-family: Arial, Helvetica, sans-serif;
+}
+
+.label-brand {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 10px;
+  border-bottom: 2px solid #111827;
+  padding-bottom: 6px;
+  margin-bottom: 6px;
+}
+
+.label-brand strong {
+  font-size: 18px;
+}
+
+.label-brand span {
+  font-size: 10px;
+  font-weight: 700;
+}
+
+.label-id {
+  font-size: 20px;
+  font-weight: 800;
+  margin-bottom: 6px;
+}
+
+.device-label p {
+  margin: 4px 0;
+  font-size: 12px;
+}
+
+.device-label small {
+  display: block;
+  margin-top: 8px;
+  font-size: 9px;
+  text-align: center;
+}
+

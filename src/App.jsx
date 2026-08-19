@@ -1,4 +1,5 @@
 import microsoldertechLogo from "./assets/microsoldertech-logo.png";
+import microsoldertechLogoCropped from "./assets/microsoldertech-logo-cropped.png";
 import { useEffect, useMemo, useState } from "react";
 import "./App.css";
 import { supabase } from "./supabase";
@@ -367,7 +368,11 @@ function App() {
 
   const [showInvoice, setShowInvoice] =
     useState(false);
-const [search, setSearch] =
+
+  const [showLabel, setShowLabel] =
+    useState(false);
+
+  const [search, setSearch] =
     useState("");
 
   const [globalSearch, setGlobalSearch] =
@@ -1531,6 +1536,7 @@ const [search, setSearch] =
       );
 
       setShowInvoice(false);
+      setShowLabel(false);
       setShowEditModal(false);
       setEditForm(null);
 
@@ -7378,6 +7384,18 @@ const [search, setSearch] =
                 <button
                   type="button"
                   className="secondary-btn"
+                  onClick={() =>
+                    setShowLabel(
+                      true
+                    )
+                  }
+                >
+                  🏷️ Print Label
+                </button>
+
+                <button
+                  type="button"
+                  className="secondary-btn"
                   onClick={
                     duplicateRepair
                   }
@@ -8363,6 +8381,240 @@ const [search, setSearch] =
                   }
                 >
                   🖨️ Print Invoice
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
+
+      {showLabel &&
+        editForm && (
+          <div className="modal-overlay">
+            <div className="label-modal">
+              <div className="device-label">
+                <div
+                  className="label-brand"
+                  style={{
+                    display: "flex",
+                    justifyContent: "center",
+                    alignItems: "center",
+                    marginBottom: "10px",
+                    marginTop: "0px",
+                  }}
+                >
+                  <img
+                    src={microsoldertechLogoCropped}
+                    alt="MicrotechUSA"
+                    style={{
+                      width: "300px",
+                      maxWidth: "78%",
+                      height: "auto",
+                      display: "block",
+                    }}
+                  />
+                </div>
+
+                <div
+                  style={{
+                    display: "flex",
+                    justifyContent: "space-between",
+                    alignItems: "center",
+                    gap: "12px",
+                  }}
+                >
+                  <div className="label-id">
+                    {editForm.id}
+                  </div>
+
+                  <div
+                    style={{
+                      fontSize: "14px",
+                      fontWeight: "700",
+                      whiteSpace: "nowrap",
+                    }}
+                  >
+                    Date:{" "}
+                    {editForm.intakeDate
+                      ? new Date(
+                          editForm.intakeDate
+                        ).toLocaleDateString()
+                      : "N/A"}
+                  </div>
+                </div>
+
+                <div
+                  style={{
+                    height: "8px",
+                  }}
+                />
+
+                <p>
+                  <strong>
+                    Customer:
+                  </strong>{" "}
+                  {
+                    editForm.customer
+                  }
+                </p>
+
+                <p>
+                  <strong>
+                    Phone:
+                  </strong>{" "}
+                  {
+                    editForm.phone
+                  }
+                </p>
+
+                <p>
+                  <strong>
+                    Device:
+                  </strong>{" "}
+                  {
+                    editForm.brand
+                  }{" "}
+                  {
+                    editForm.model
+                  }
+                </p>
+
+                <p>
+                  <strong>
+                    Issue:
+                  </strong>{" "}
+                  {
+                    editForm.issue
+                  }
+                </p>
+
+                <p>
+                  <strong>
+                    Passcode:
+                  </strong>{" "}
+                  {
+                    editForm.passcode ||
+                    "N/A"
+                  }
+                </p>
+
+                <p>
+                  <strong>
+                    Technician:
+                  </strong>{" "}
+                  {
+                    editForm.technician ||
+                    "Unassigned"
+                  }
+                </p>
+
+                <small>
+                  Keep this label
+                  with the device
+                </small>
+              </div>
+
+              <div className="modal-actions">
+                <button
+                  className="secondary-btn"
+                  onClick={() =>
+                    setShowLabel(
+                      false
+                    )
+                  }
+                >
+                  Close
+                </button>
+
+                <button
+                  className="primary-btn"
+                  onClick={async () => {
+                    try {
+                      const response = await fetch(
+                        "http://127.0.0.1:8787/print-label",
+                        {
+                          method: "POST",
+                          headers: {
+                            "Content-Type":
+                              "application/json",
+                          },
+                          body: JSON.stringify({
+                            repair:
+                              editForm.id ||
+                              "N/A",
+
+                            date:
+                              editForm.intakeDate
+                                ? new Date(
+                                    editForm.intakeDate
+                                  ).toLocaleDateString()
+                                : "N/A",
+
+                            customer:
+                              editForm.customer ||
+                              "N/A",
+
+                            phone:
+                              editForm.phone ||
+                              "N/A",
+
+                            device:
+                              [
+                                editForm.brand,
+                                editForm.model,
+                              ]
+                                .filter(Boolean)
+                                .join(" ") ||
+                              "N/A",
+
+                            issue:
+                              editForm.issue ||
+                              "N/A",
+
+                            passcode:
+                              editForm.passcode ||
+                              "N/A",
+
+                            serial:
+                              editForm.serial ||
+                              "N/A",
+
+                            technician:
+                              editForm.technician ||
+                              "Unassigned",
+                          }),
+                        }
+                      );
+
+                      const result =
+                        await response.json();
+
+                      if (
+                        !response.ok ||
+                        !result.ok
+                      ) {
+                        throw new Error(
+                          result.error ||
+                            "Print failed"
+                        );
+                      }
+
+                      console.log(
+                        "Label sent to:",
+                        result.printer
+                      );
+                    } catch (error) {
+                      console.error(
+                        "Direct label print failed:",
+                        error
+                      );
+
+                      alert(
+                        "Could not print the label. Make sure the MicrotechUSA Print Service is running."
+                      );
+                    }
+                  }}
+                >
+                  🖨️ Print Label
                 </button>
               </div>
             </div>
