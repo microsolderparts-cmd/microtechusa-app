@@ -8454,12 +8454,47 @@ function App() {
                     marginTop: "24px",
                     fontSize: "12px",
                     opacity: 0.75,
+                    textAlign: "center",
                   }}
                 >
-                  Thank you for choosing{" "}
-                  {
-                    businessSettings.businessName
-                  }.
+                  <div>
+                    Thank you for choosing{" "}
+                    {
+                      businessSettings.businessName
+                    }.
+                  </div>
+
+                  <div
+                    style={{
+                      marginTop: "12px",
+                      fontWeight: "700",
+                      opacity: 1,
+                    }}
+                  >
+                    FOLLOW US
+                  </div>
+
+                  <div
+                    style={{
+                      marginTop: "4px",
+                      fontSize: "11px",
+                    }}
+                  >
+                    Instagram: @microtechusa
+                    {" • "}
+                    Facebook: microsolderteh
+                    {" • "}
+                    TikTok: @microsoldertech
+                  </div>
+
+                  <div
+                    style={{
+                      marginTop: "5px",
+                      fontWeight: "700",
+                    }}
+                  >
+                    microsoldertech.com
+                  </div>
                 </div>
               </div>
 
