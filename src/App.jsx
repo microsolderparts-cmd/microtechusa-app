@@ -311,6 +311,17 @@ function paymentStatus(total, paid) {
   return "Partial";
 }
 
+
+function formatPhoneNumber(value) {
+  const digits = String(value || "").replace(/\D/g, "");
+
+  if (digits.length === 10) {
+    return `(${digits.slice(0, 3)}) ${digits.slice(3, 6)}-${digits.slice(6)}`;
+  }
+
+  return value || "";
+}
+
 function App() {
   const [activeSection, setActiveSection] =
     useState("Dashboard");
@@ -835,10 +846,10 @@ function App() {
     const nextNumber =
       await getNextInvoiceNumberFromSupabase();
 
-    return `INV-${String(nextNumber).padStart(
+    return String(nextNumber).padStart(
       6,
       "0"
-    )}`;
+    );
   }
 
   async function createRepair(event) {
@@ -8100,22 +8111,23 @@ function App() {
         editForm && (
           <div className="modal-overlay">
             <div className="invoice-modal">
-              <div className="invoice-sheet invoice-pro">
-                <header className="invoice-pro-header">
-                  <div className="invoice-company">
+              <div className="invoice-sheet invoice-pro invoice-v2">
+
+                <header className="invoice-v2-header">
+                  <div className="invoice-v2-brand">
                     <img
                       src={microsoldertechLogo}
                       alt="MicroSolderTech"
-                      className="invoice-logo"
+                      className="invoice-v2-logo"
                     />
 
-                    <div className="invoice-service-title">
+                    <div className="invoice-v2-business-name">
                       MICROSOLDERING REPAIR SERVICES
                     </div>
 
-                    <div className="invoice-contact">
+                    <div className="invoice-v2-contact">
                       {businessSettings.phone && (
-                        <div>{businessSettings.phone}</div>
+                        <div>{formatPhoneNumber(businessSettings.phone)}</div>
                       )}
                       {businessSettings.email && (
                         <div>{businessSettings.email}</div>
@@ -8126,57 +8138,54 @@ function App() {
                     </div>
                   </div>
 
-                  <div className="invoice-id-card">
-                    <div className="invoice-id-title">INVOICE</div>
-
-                    <div className="invoice-id-number">
+                  <div className="invoice-v2-idbox">
+                    <div className="invoice-v2-title">INVOICE</div>
+                    <div className="invoice-v2-number">
                       {editForm.invoiceNumber}
                     </div>
-
-                    <div className="invoice-id-date">
+                    <div className="invoice-v2-meta">
                       <span>DATE</span>
-                      <strong>
-                        {editForm.intakeDate || nowString()}
-                      </strong>
+                      <strong>{editForm.intakeDate || nowString()}</strong>
+                    </div>
+                    <div className="invoice-v2-status">
+                      {editForm.status || "Received"}
                     </div>
                   </div>
                 </header>
 
-                <section className="invoice-info-grid">
-                  <div className="invoice-card">
-                    <div className="invoice-card-heading">
-                      <span className="invoice-badge">B</span>
-                      BILL TO
+                <section className="invoice-v2-info-grid">
+                  <div className="invoice-v2-panel">
+                    <div className="invoice-v2-panel-title">
+                      CUSTOMER INFORMATION
                     </div>
 
-                    <div className="invoice-customer-name">
+                    <div className="invoice-v2-customer">
                       {editForm.customer}
                     </div>
 
-                    <div className="invoice-detail-line">
+                    <div className="invoice-v2-row">
                       <span>Phone</span>
-                      {editForm.phone || "Not provided"}
+                      <strong>{editForm.phone || "Not provided"}</strong>
                     </div>
 
-                    <div className="invoice-detail-line">
+                    <div className="invoice-v2-row">
                       <span>Email</span>
-                      {
-                        customerProfiles.find(
+                      <strong>
+                        {customerProfiles.find(
                           (customer) =>
                             String(customer.id) ===
                             String(editForm.customerId)
-                        )?.email || "Not provided"
-                      }
+                        )?.email || "Not provided"}
+                      </strong>
                     </div>
                   </div>
 
-                  <div className="invoice-card">
-                    <div className="invoice-card-heading">
-                      <span className="invoice-badge">R</span>
-                      REPAIR DETAILS
+                  <div className="invoice-v2-panel">
+                    <div className="invoice-v2-panel-title">
+                      REPAIR INFORMATION
                     </div>
 
-                    <div className="invoice-repair-grid">
+                    <div className="invoice-v2-repair-grid">
                       <div>
                         <span>Repair #</span>
                         <strong>{editForm.id}</strong>
@@ -8184,115 +8193,88 @@ function App() {
 
                       <div>
                         <span>Technician</span>
-                        <strong>
-                          {editForm.technician || "Unassigned"}
-                        </strong>
+                        <strong>{editForm.technician || "Unassigned"}</strong>
                       </div>
 
                       <div>
                         <span>Device</span>
                         <strong>
-                          {editForm.deviceType} {editForm.brand}{" "}
-                          {editForm.model}
+                          {editForm.deviceType} {editForm.brand} {editForm.model}
                         </strong>
                       </div>
 
                       <div>
                         <span>Warranty</span>
-                        <strong>{editForm.warranty}</strong>
+                        <strong>{editForm.warranty || "N/A"}</strong>
                       </div>
 
-                      <div>
+                      <div className="invoice-v2-full">
                         <span>Serial / IMEI</span>
-                        <strong>
-                          {editForm.serial || "Not recorded"}
-                        </strong>
+                        <strong>{editForm.serial || "Not recorded"}</strong>
                       </div>
                     </div>
                   </div>
                 </section>
 
-                <section className="invoice-issue-grid">
-                  <div className="invoice-highlight">
-                    <span className="invoice-circle">!</span>
-
-                    <div>
-                      <div className="invoice-section-label">
-                        ISSUE
-                      </div>
-
-                      <div className="invoice-section-value">
-                        {editForm.issue || "Not provided"}
-                      </div>
+                <section className="invoice-v2-notes-grid">
+                  <div className="invoice-v2-note">
+                    <div className="invoice-v2-note-title">ISSUE</div>
+                    <div className="invoice-v2-note-value">
+                      {editForm.issue || "Not provided"}
                     </div>
                   </div>
 
-                  <div className="invoice-highlight">
-                    <span className="invoice-circle">D</span>
-
-                    <div>
-                      <div className="invoice-section-label">
-                        DIAGNOSIS
-                      </div>
-
-                      <div className="invoice-section-value">
-                        {editForm.diagnosis || "Not provided"}
-                      </div>
+                  <div className="invoice-v2-note">
+                    <div className="invoice-v2-note-title">DIAGNOSIS</div>
+                    <div className="invoice-v2-note-value">
+                      {editForm.diagnosis || "Not provided"}
                     </div>
                   </div>
                 </section>
 
-                <section className="invoice-financial-grid">
-                  <div className="invoice-left-column">
+                <section className="invoice-v2-main-grid">
+                  <div className="invoice-v2-left">
 
-                    <div className="invoice-card invoice-service-card">
-                      <div className="invoice-card-heading">
-                        <span className="invoice-badge">$</span>
+                    <div className="invoice-v2-panel">
+                      <div className="invoice-v2-panel-title">
                         SERVICE SUMMARY
                       </div>
 
-                      <div className="invoice-table">
-                        <div className="invoice-table-head">
+                      <div className="invoice-v2-table">
+                        <div className="invoice-v2-table-head">
                           <span>DESCRIPTION</span>
                           <span>AMOUNT</span>
                         </div>
 
-                        <div className="invoice-table-row">
+                        <div className="invoice-v2-table-row">
                           <span>Parts</span>
-                          <strong>
-                            ${money(editForm.partsCost)}
-                          </strong>
+                          <strong>${money(editForm.partsCost)}</strong>
                         </div>
 
-                        <div className="invoice-table-row">
+                        <div className="invoice-v2-table-row">
                           <span>Labor</span>
-                          <strong>
-                            ${money(editForm.labor)}
-                          </strong>
+                          <strong>${money(editForm.labor)}</strong>
                         </div>
 
-                        <div className="invoice-table-total">
+                        <div className="invoice-v2-table-total">
                           <span>TOTAL</span>
-                          <strong>
-                            ${money(editTotal)}
-                          </strong>
+                          <strong>${money(editTotal)}</strong>
                         </div>
                       </div>
                     </div>
 
-                    <div className="invoice-card invoice-payment-card">
-                      <div className="invoice-card-heading">
-                        <span className="invoice-badge">$</span>
+                    <div className="invoice-v2-panel">
+                      <div className="invoice-v2-panel-title">
                         PAYMENT HISTORY
                       </div>
 
                       {(editForm.payments || []).length === 0 ? (
-                        <div className="invoice-empty-payment">
+                        <div className="invoice-v2-empty">
                           No payments recorded.
                         </div>
                       ) : (
-                        <div className="invoice-payment-table">
-                          <div className="invoice-payment-head">
+                        <div className="invoice-v2-payment-table">
+                          <div className="invoice-v2-payment-head">
                             <span>DATE</span>
                             <span>DESCRIPTION</span>
                             <span>METHOD</span>
@@ -8302,83 +8284,71 @@ function App() {
                           {(editForm.payments || []).map((payment) => (
                             <div
                               key={payment.id}
-                              className="invoice-payment-row"
+                              className="invoice-v2-payment-row"
                             >
                               <span>{payment.date}</span>
                               <span>Payment</span>
                               <span>{payment.method}</span>
-                              <strong>
-                                ${money(payment.amount)}
-                              </strong>
+                              <strong>${money(payment.amount)}</strong>
                             </div>
                           ))}
                         </div>
                       )}
                     </div>
-
-                    {editForm.customerNotes && (
-                      <div className="invoice-card invoice-notes-card">
-                        <div className="invoice-card-heading">
-                          CUSTOMER NOTES
-                        </div>
-
-                        <p>{editForm.customerNotes}</p>
-                      </div>
-                    )}
                   </div>
 
-                  <aside className="invoice-total-card">
-                    <div className="invoice-card-heading">
-                      <span className="invoice-badge">$</span>
+                  <aside className="invoice-v2-panel invoice-v2-total-panel">
+                    <div className="invoice-v2-panel-title">
                       TOTAL SUMMARY
                     </div>
 
-                    <div className="invoice-total-line">
+                    <div className="invoice-v2-total-row">
                       <span>Subtotal</span>
                       <strong>${money(editTotal)}</strong>
                     </div>
 
-                    <div className="invoice-total-line">
+                    <div className="invoice-v2-total-row">
                       <span>Paid</span>
                       <strong>${money(editPaid)}</strong>
                     </div>
 
-                    <div className="invoice-balance">
+                    <div className="invoice-v2-balance">
                       <span>BALANCE DUE</span>
                       <strong>${money(editBalance)}</strong>
                     </div>
                   </aside>
                 </section>
 
-                <footer className="invoice-pro-footer">
-                  <div>
-                    Thank you for choosing{" "}
-                    {businessSettings.businessName}.
-                  </div>
+                {editForm.customerNotes && (
+                  <section className="invoice-v2-panel invoice-v2-notes-panel">
+                    <div className="invoice-v2-panel-title">
+                      CUSTOMER NOTES
+                    </div>
+                    <div className="invoice-v2-note-value">
+                      {editForm.customerNotes}
+                    </div>
+                  </section>
+                )}
 
-                  <div className="invoice-website">
-                    microsoldertech.com
+                <footer className="invoice-v2-footer">
+                  <div>
+                    Thank you for choosing {businessSettings.businessName}.
                   </div>
+                  <strong>microsoldertech.com</strong>
                 </footer>
               </div>
 
               <div className="modal-actions">
                 <button
                   className="secondary-btn"
-                  onClick={() =>
-                    setShowInvoice(
-                      false
-                    )
-                  }
+                  onClick={() => setShowInvoice(false)}
                 >
                   Close
                 </button>
 
                 <button
                   className="primary-btn"
-                  onClick={() =>
-                    window.print()
-                  }
+                  onClick={() => window.print()}
                 >
                   🖨️ Print Invoice
                 </button>
