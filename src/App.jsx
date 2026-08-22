@@ -8612,7 +8612,7 @@ body {
   max-height: 0.30in;
   object-fit: contain;
   filter: contrast(160%);
-  transform: translateY(0.08in);
+  transform: translateY(0.14in);
 }
 
 .subtitle {
