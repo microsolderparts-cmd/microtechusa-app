@@ -8587,7 +8587,7 @@ body {
 }
 
 body {
-  padding: 0.045in;
+  padding: 0.11in 0.045in 0.045in 0.045in;
 }
 
 .label {
