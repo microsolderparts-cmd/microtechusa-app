@@ -1,5 +1,6 @@
 import microsoldertechLogo from "./assets/microsoldertech-logo.png";
 import microsoldertechLogoCropped from "./assets/microsoldertech-logo-cropped.png";
+import microsoldertechLogoThermal from "./assets/microsoldertech-logo-thermal.png";
 import { useEffect, useMemo, useState } from "react";
 import "./App.css";
 import { supabase } from "./supabase";
@@ -8550,7 +8551,7 @@ function App() {
                       editForm.serial || "N/A";
 
                     const logoSrc =
-                      microsoldertechLogoCropped;
+                      microsoldertechLogoThermal;
 
                     printWindow.document.open();
 
