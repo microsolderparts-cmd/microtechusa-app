@@ -8584,7 +8584,7 @@ function App() {
                             }
 
                             body {
-                              padding: 0.07in;
+                              padding: 0.03in;
                             }
 
                             .label {
@@ -8599,18 +8599,18 @@ function App() {
                               display: flex;
                               justify-content: center;
                               align-items: center;
-                              height: 0.42in;
+                              height: 0.34in;
                             }
 
                             .brand img {
                               max-width: 88%;
-                              max-height: 0.34in;
+                              max-height: 0.28in;
                               object-fit: contain;
                             }
 
                             .subtitle {
                               text-align: center;
-                              font-size: 9pt;
+                              font-size: 7.5pt;
                               font-weight: 800;
                               padding-bottom: 0.04in;
                               border-bottom: 2px solid #000;
@@ -8618,13 +8618,13 @@ function App() {
 
                             .top-row {
                               display: grid;
-                              grid-template-columns: 1fr 0.72fr;
+                              grid-template-columns: 1.2fr 0.8fr;
                               gap: 0;
                               border-bottom: 2px solid #000;
                             }
 
                             .top-cell {
-                              padding: 0.06in 0.04in;
+                              padding: 0.04in 0.035in;
                             }
 
                             .top-cell + .top-cell {
@@ -8636,7 +8636,7 @@ function App() {
                               background: #000;
                               color: #fff;
                               padding: 2px 6px;
-                              font-size: 8pt;
+                              font-size: 7pt;
                               font-weight: 900;
                               line-height: 1;
                               margin-bottom: 4px;
@@ -8644,14 +8644,14 @@ function App() {
 
                             .repair-id {
                               display: block;
-                              font-size: 18pt;
+                              font-size: 11.5pt;
                               line-height: 1;
                               font-weight: 900;
                             }
 
                             .field-label {
                               display: block;
-                              font-size: 8.5pt;
+                              font-size: 7pt;
                               line-height: 1;
                               font-weight: 900;
                               text-transform: uppercase;
@@ -8660,7 +8660,7 @@ function App() {
 
                             .field-value {
                               display: block;
-                              font-size: 11.5pt;
+                              font-size: 9pt;
                               line-height: 1.08;
                               font-weight: 800;
                               word-break: break-word;
@@ -8673,8 +8673,8 @@ function App() {
                             }
 
                             .cell {
-                              min-height: 0.50in;
-                              padding: 0.06in 0.04in;
+                              min-height: 0.40in;
+                              padding: 0.04in 0.035in;
                             }
 
                             .cell + .cell {
@@ -8682,19 +8682,19 @@ function App() {
                             }
 
                             .full {
-                              padding: 0.06in 0.04in;
+                              padding: 0.04in 0.035in;
                               border-bottom: 1.5px solid #000;
                             }
 
                             .full .field-value {
-                              font-size: 12.5pt;
+                              font-size: 8.5pt;
                             }
 
                             .serial-box {
-                              margin-top: 0.05in;
+                              margin-top: 0.03in;
                               border: 2px solid #000;
                               border-radius: 5px;
-                              padding: 0.05in;
+                              padding: 0.03in;
                               text-align: center;
                             }
 
@@ -8702,7 +8702,7 @@ function App() {
                               display: inline-block;
                               background: #000;
                               color: #fff;
-                              font-size: 8.5pt;
+                              font-size: 7pt;
                               font-weight: 900;
                               padding: 2px 7px;
                               margin-bottom: 4px;
@@ -8710,7 +8710,7 @@ function App() {
 
                             .serial-value {
                               display: block;
-                              font-size: 14pt;
+                              font-size: 11.5pt;
                               line-height: 1;
                               font-weight: 900;
                               word-break: break-all;
@@ -8718,20 +8718,20 @@ function App() {
 
                             .footer {
                               margin-top: auto;
-                              padding-top: 0.04in;
+                              padding-top: 0.025in;
                               border-top: 2px solid #000;
                               text-align: center;
                             }
 
                             .keep {
-                              font-size: 8.5pt;
+                              font-size: 7pt;
                               font-weight: 900;
                               line-height: 1.1;
                             }
 
                             .website {
                               margin-top: 3px;
-                              font-size: 10pt;
+                              font-size: 8.5pt;
                               font-weight: 900;
                             }
                           </style>
