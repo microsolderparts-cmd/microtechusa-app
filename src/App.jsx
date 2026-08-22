@@ -8498,23 +8498,11 @@ function App() {
                 <button
                   className="primary-btn"
                   onClick={() => {
-                    const label =
-                      document.querySelector(
-                        ".device-label"
-                      );
-
-                    if (!label) {
-                      alert(
-                        "Label preview not found."
-                      );
-                      return;
-                    }
-
                     const printWindow =
                       window.open(
                         "",
                         "_blank",
-                        "width=500,height=800"
+                        "width=520,height=900"
                       );
 
                     if (!printWindow) {
@@ -8524,6 +8512,46 @@ function App() {
                       return;
                     }
 
+                    const repairId =
+                      editForm.id || "N/A";
+
+                    const repairDate =
+                      editForm.intakeDate
+                        ? new Date(
+                            editForm.intakeDate
+                          ).toLocaleDateString()
+                        : "N/A";
+
+                    const customer =
+                      editForm.customer || "N/A";
+
+                    const phone =
+                      editForm.phone || "N/A";
+
+                    const device =
+                      [
+                        editForm.brand,
+                        editForm.model,
+                      ]
+                        .filter(Boolean)
+                        .join(" ") || "N/A";
+
+                    const issue =
+                      editForm.issue || "N/A";
+
+                    const passcode =
+                      editForm.passcode || "N/A";
+
+                    const technician =
+                      editForm.technician ||
+                      "Unassigned";
+
+                    const serial =
+                      editForm.serial || "N/A";
+
+                    const logoSrc =
+                      microsoldertechLogoCropped;
+
                     printWindow.document.open();
 
                     printWindow.document.write(`
@@ -8531,9 +8559,6 @@ function App() {
                       <html>
                         <head>
                           <meta charset="UTF-8" />
-
-                          <base href="${document.baseURI}" />
-
                           <title>Repair Label</title>
 
                           <style>
@@ -8552,76 +8577,287 @@ function App() {
                               height: 4in;
                               margin: 0;
                               padding: 0;
-                              background: white;
+                              background: #fff;
+                              color: #000;
                               overflow: hidden;
                               font-family: Arial, Helvetica, sans-serif;
-                              color: black;
                             }
 
-                            .device-label {
-                              width: 2.313in !important;
-                              height: 4in !important;
-                              margin: 0 !important;
-                              padding: 0.10in !important;
-                              border: 0 !important;
-                              border-radius: 0 !important;
-                              box-shadow: none !important;
-                              background: white !important;
-                              color: black !important;
-                              overflow: hidden !important;
-                              font-family: Arial, Helvetica, sans-serif;
+                            body {
+                              padding: 0.07in;
                             }
 
-                            .label-brand {
-                              display: flex !important;
-                              justify-content: center !important;
-                              align-items: center !important;
-                              margin-top: 0 !important;
-                              margin-bottom: 8px !important;
+                            .label {
+                              width: 100%;
+                              height: 100%;
+                              display: flex;
+                              flex-direction: column;
+                              background: #fff;
                             }
 
-                            .label-brand img {
-                              max-width: 88% !important;
-                              height: auto !important;
-                              display: block !important;
+                            .brand {
+                              display: flex;
+                              justify-content: center;
+                              align-items: center;
+                              height: 0.42in;
                             }
 
-                            .label-id {
-                              font-size: 22px !important;
-                              line-height: 1 !important;
-                              font-weight: 900 !important;
+                            .brand img {
+                              max-width: 88%;
+                              max-height: 0.34in;
+                              object-fit: contain;
                             }
 
-                            .device-label p {
-                              margin: 5px 0 !important;
-                              padding: 0 !important;
-                              font-size: 13px !important;
-                              line-height: 1.18 !important;
+                            .subtitle {
+                              text-align: center;
+                              font-size: 9pt;
+                              font-weight: 800;
+                              padding-bottom: 0.04in;
+                              border-bottom: 2px solid #000;
                             }
 
-                            .device-label p strong {
-                              font-weight: 800 !important;
+                            .top-row {
+                              display: grid;
+                              grid-template-columns: 1fr 0.72fr;
+                              gap: 0;
+                              border-bottom: 2px solid #000;
                             }
 
-                            .device-label small {
-                              display: block !important;
-                              margin-top: 10px !important;
-                              text-align: center !important;
-                              font-size: 10px !important;
-                              font-weight: 700 !important;
+                            .top-cell {
+                              padding: 0.06in 0.04in;
+                            }
+
+                            .top-cell + .top-cell {
+                              border-left: 2px solid #000;
+                            }
+
+                            .tag {
+                              display: inline-block;
+                              background: #000;
+                              color: #fff;
+                              padding: 2px 6px;
+                              font-size: 8pt;
+                              font-weight: 900;
+                              line-height: 1;
+                              margin-bottom: 4px;
+                            }
+
+                            .repair-id {
+                              display: block;
+                              font-size: 18pt;
+                              line-height: 1;
+                              font-weight: 900;
+                            }
+
+                            .field-label {
+                              display: block;
+                              font-size: 8.5pt;
+                              line-height: 1;
+                              font-weight: 900;
+                              text-transform: uppercase;
+                              margin-bottom: 3px;
+                            }
+
+                            .field-value {
+                              display: block;
+                              font-size: 11.5pt;
+                              line-height: 1.08;
+                              font-weight: 800;
+                              word-break: break-word;
+                            }
+
+                            .two-col {
+                              display: grid;
+                              grid-template-columns: 1fr 1fr;
+                              border-bottom: 1.5px solid #000;
+                            }
+
+                            .cell {
+                              min-height: 0.50in;
+                              padding: 0.06in 0.04in;
+                            }
+
+                            .cell + .cell {
+                              border-left: 1.5px solid #000;
+                            }
+
+                            .full {
+                              padding: 0.06in 0.04in;
+                              border-bottom: 1.5px solid #000;
+                            }
+
+                            .full .field-value {
+                              font-size: 12.5pt;
+                            }
+
+                            .serial-box {
+                              margin-top: 0.05in;
+                              border: 2px solid #000;
+                              border-radius: 5px;
+                              padding: 0.05in;
+                              text-align: center;
+                            }
+
+                            .serial-title {
+                              display: inline-block;
+                              background: #000;
+                              color: #fff;
+                              font-size: 8.5pt;
+                              font-weight: 900;
+                              padding: 2px 7px;
+                              margin-bottom: 4px;
+                            }
+
+                            .serial-value {
+                              display: block;
+                              font-size: 14pt;
+                              line-height: 1;
+                              font-weight: 900;
+                              word-break: break-all;
+                            }
+
+                            .footer {
+                              margin-top: auto;
+                              padding-top: 0.04in;
+                              border-top: 2px solid #000;
+                              text-align: center;
+                            }
+
+                            .keep {
+                              font-size: 8.5pt;
+                              font-weight: 900;
+                              line-height: 1.1;
+                            }
+
+                            .website {
+                              margin-top: 3px;
+                              font-size: 10pt;
+                              font-weight: 900;
                             }
                           </style>
                         </head>
 
                         <body>
-                          ${label.outerHTML}
+                          <div class="label">
+
+                            <div class="brand">
+                              <img
+                                src="${logoSrc}"
+                                alt="MicroSolderTech"
+                              />
+                            </div>
+
+                            <div class="subtitle">
+                              MICROSOLDERING REPAIR CENTER
+                            </div>
+
+                            <div class="top-row">
+                              <div class="top-cell">
+                                <span class="tag">REPAIR ID</span>
+                                <span class="repair-id">
+                                  ${repairId}
+                                </span>
+                              </div>
+
+                              <div class="top-cell">
+                                <span class="field-label">DATE</span>
+                                <span class="field-value">
+                                  ${repairDate}
+                                </span>
+                              </div>
+                            </div>
+
+                            <div class="two-col">
+                              <div class="cell">
+                                <span class="field-label">
+                                  CUSTOMER
+                                </span>
+                                <span class="field-value">
+                                  ${customer}
+                                </span>
+                              </div>
+
+                              <div class="cell">
+                                <span class="field-label">
+                                  PHONE
+                                </span>
+                                <span class="field-value">
+                                  ${phone}
+                                </span>
+                              </div>
+                            </div>
+
+                            <div class="full">
+                              <span class="field-label">
+                                DEVICE
+                              </span>
+                              <span class="field-value">
+                                ${device}
+                              </span>
+                            </div>
+
+                            <div class="full">
+                              <span class="field-label">
+                                ISSUE
+                              </span>
+                              <span class="field-value">
+                                ${issue}
+                              </span>
+                            </div>
+
+                            <div class="two-col">
+                              <div class="cell">
+                                <span class="field-label">
+                                  PASSCODE
+                                </span>
+                                <span class="field-value">
+                                  ${passcode}
+                                </span>
+                              </div>
+
+                              <div class="cell">
+                                <span class="field-label">
+                                  TECHNICIAN
+                                </span>
+                                <span class="field-value">
+                                  ${technician}
+                                </span>
+                              </div>
+                            </div>
+
+                            <div class="serial-box">
+                              <span class="serial-title">
+                                SERIAL / IMEI
+                              </span>
+                              <span class="serial-value">
+                                ${serial}
+                              </span>
+                            </div>
+
+                            <div class="footer">
+                              <div class="keep">
+                                KEEP THIS LABEL WITH THE DEVICE
+                              </div>
+
+                              <div class="website">
+                                microsoldertech.com
+                              </div>
+                            </div>
+
+                          </div>
 
                           <script>
-                            window.onload = () => {
+                            const startPrint = () => {
                               setTimeout(() => {
                                 window.print();
-                              }, 250);
+                              }, 350);
                             };
+
+                            if (document.fonts?.ready) {
+                              document.fonts.ready.then(startPrint);
+                            } else {
+                              window.onload = startPrint;
+                            }
 
                             window.onafterprint = () => {
                               window.close();
