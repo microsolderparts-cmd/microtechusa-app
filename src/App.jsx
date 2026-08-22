@@ -8587,7 +8587,7 @@ body {
 }
 
 body {
-  padding: 0.11in 0.045in 0.045in 0.045in;
+  padding: 0.045in;
 }
 
 .label {
@@ -8612,6 +8612,7 @@ body {
   max-height: 0.30in;
   object-fit: contain;
   filter: contrast(160%);
+  transform: translateY(0.08in);
 }
 
 .subtitle {
