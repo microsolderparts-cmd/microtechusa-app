@@ -1,6 +1,5 @@
 import microsoldertechLogo from "./assets/microsoldertech-logo.png";
 import microsoldertechLogoCropped from "./assets/microsoldertech-logo-cropped.png";
-import microsoldertechLogoThermal from "./assets/microsoldertech-logo-thermal.png";
 import { useEffect, useMemo, useState } from "react";
 import "./App.css";
 import { supabase } from "./supabase";
@@ -8551,339 +8550,321 @@ function App() {
                       editForm.serial || "N/A";
 
                     const logoSrc =
-                      microsoldertechLogoThermal;
+                      microsoldertechLogoCropped;
 
                     printWindow.document.open();
 
                     printWindow.document.write(`
-<!doctype html>
-<html>
-<head>
-<meta charset="UTF-8" />
-<title>Repair Label</title>
+                      <!doctype html>
+                      <html>
+                        <head>
+                          <meta charset="UTF-8" />
+                          <title>Repair Label</title>
 
-<style>
-@page {
-  size: 2.313in 4in;
-  margin: 0;
-}
+                          <style>
+                            @page {
+                              size: 2.313in 4in;
+                              margin: 0;
+                            }
 
-* {
-  box-sizing: border-box;
-}
+                            * {
+                              box-sizing: border-box;
+                            }
 
-html,
-body {
-  margin: 0;
-  padding: 0;
-  width: 2.313in;
-  height: 4in;
-  overflow: hidden;
-  background: #fff;
-  color: #000;
-  font-family: Arial, Helvetica, sans-serif;
-  -webkit-print-color-adjust: exact;
-  print-color-adjust: exact;
-}
+                            html,
+                            body {
+                              width: 2.313in;
+                              height: 4in;
+                              margin: 0;
+                              padding: 0;
+                              background: #fff;
+                              color: #000;
+                              overflow: hidden;
+                              font-family: Arial, Helvetica, sans-serif;
+                            }
 
-body {
-  padding: 0.045in;
-}
+                            body {
+                              padding: 0.07in;
+                            }
 
-.label {
-  width: 100%;
-  height: 100%;
-  display: flex;
-  flex-direction: column;
-}
+                            .label {
+                              width: 100%;
+                              height: 100%;
+                              display: flex;
+                              flex-direction: column;
+                              background: #fff;
+                            }
 
-/* BRAND */
+                            .brand {
+                              display: flex;
+                              justify-content: center;
+                              align-items: center;
+                              height: 0.42in;
+                            }
 
-.brand {
-  height: 0.34in;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-}
+                            .brand img {
+                              max-width: 88%;
+                              max-height: 0.34in;
+                              object-fit: contain;
+                            }
 
-.brand img {
-  display: block;
-  max-width: 96%;
-  max-height: 0.30in;
-  object-fit: contain;
-  filter: contrast(160%);
-  transform: translateY(0.14in);
-}
+                            .subtitle {
+                              text-align: center;
+                              font-size: 9pt;
+                              font-weight: 800;
+                              padding-bottom: 0.04in;
+                              border-bottom: 2px solid #000;
+                            }
 
-.subtitle {
-  text-align: center;
-  font-size: 7.8pt;
-  font-weight: 900;
-  line-height: 1;
-  padding: 0.035in 0 0.045in;
-  border-bottom: 2.5px solid #000;
-}
+                            .top-row {
+                              display: grid;
+                              grid-template-columns: 1fr 0.72fr;
+                              gap: 0;
+                              border-bottom: 2px solid #000;
+                            }
 
-/* COMMON */
+                            .top-cell {
+                              padding: 0.06in 0.04in;
+                            }
 
-.badge {
-  display: inline-block;
-  background: #000;
-  color: #fff;
-  font-size: 6.7pt;
-  font-weight: 900;
-  line-height: 1;
-  padding: 2px 5px;
-  margin-bottom: 3px;
-  text-transform: uppercase;
-}
+                            .top-cell + .top-cell {
+                              border-left: 2px solid #000;
+                            }
 
-.value {
-  display: block;
-  font-size: 9.6pt;
-  font-weight: 900;
-  line-height: 1.05;
-}
+                            .tag {
+                              display: inline-block;
+                              background: #000;
+                              color: #fff;
+                              padding: 2px 6px;
+                              font-size: 8pt;
+                              font-weight: 900;
+                              line-height: 1;
+                              margin-bottom: 4px;
+                            }
 
-.section-line {
-  border-bottom: 2px solid #000;
-}
+                            .repair-id {
+                              display: block;
+                              font-size: 18pt;
+                              line-height: 1;
+                              font-weight: 900;
+                            }
 
-/* REPAIR / DATE */
+                            .field-label {
+                              display: block;
+                              font-size: 8.5pt;
+                              line-height: 1;
+                              font-weight: 900;
+                              text-transform: uppercase;
+                              margin-bottom: 3px;
+                            }
 
-.top {
-  display: grid;
-  grid-template-columns: 1.28fr 0.72fr;
-  border-bottom: 2px solid #000;
-}
+                            .field-value {
+                              display: block;
+                              font-size: 11.5pt;
+                              line-height: 1.08;
+                              font-weight: 800;
+                              word-break: break-word;
+                            }
 
-.top > div {
-  min-height: 0.46in;
-  padding: 0.04in 0.035in;
-}
+                            .two-col {
+                              display: grid;
+                              grid-template-columns: 1fr 1fr;
+                              border-bottom: 1.5px solid #000;
+                            }
 
-.top > div + div {
-  border-left: 2px solid #000;
-}
+                            .cell {
+                              min-height: 0.50in;
+                              padding: 0.06in 0.04in;
+                            }
 
-.repair-number {
-  display: block;
-  font-size: 15.5pt;
-  line-height: 1;
-  font-weight: 900;
-  white-space: nowrap;
-}
+                            .cell + .cell {
+                              border-left: 1.5px solid #000;
+                            }
 
-.date-value {
-  font-size: 9.7pt;
-  font-weight: 900;
-  white-space: nowrap;
-}
+                            .full {
+                              padding: 0.06in 0.04in;
+                              border-bottom: 1.5px solid #000;
+                            }
 
-/* CUSTOMER / PHONE */
+                            .full .field-value {
+                              font-size: 12.5pt;
+                            }
 
-.two {
-  display: grid;
-  grid-template-columns: 1fr 1fr;
-  border-bottom: 1.8px solid #000;
-}
+                            .serial-box {
+                              margin-top: 0.05in;
+                              border: 2px solid #000;
+                              border-radius: 5px;
+                              padding: 0.05in;
+                              text-align: center;
+                            }
 
-.two > div {
-  min-height: 0.46in;
-  padding: 0.04in 0.035in;
-}
+                            .serial-title {
+                              display: inline-block;
+                              background: #000;
+                              color: #fff;
+                              font-size: 8.5pt;
+                              font-weight: 900;
+                              padding: 2px 7px;
+                              margin-bottom: 4px;
+                            }
 
-.two > div + div {
-  border-left: 1.8px solid #000;
-}
+                            .serial-value {
+                              display: block;
+                              font-size: 14pt;
+                              line-height: 1;
+                              font-weight: 900;
+                              word-break: break-all;
+                            }
 
-.two .value {
-  font-size: 9.1pt;
-}
+                            .footer {
+                              margin-top: auto;
+                              padding-top: 0.04in;
+                              border-top: 2px solid #000;
+                              text-align: center;
+                            }
 
-/* FULL WIDTH */
+                            .keep {
+                              font-size: 8.5pt;
+                              font-weight: 900;
+                              line-height: 1.1;
+                            }
 
-.full {
-  padding: 0.04in 0.035in;
-  border-bottom: 1.8px solid #000;
-  min-height: 0.43in;
-}
+                            .website {
+                              margin-top: 3px;
+                              font-size: 10pt;
+                              font-weight: 900;
+                            }
+                          </style>
+                        </head>
 
-.full .value {
-  font-size: 10.3pt;
-}
+                        <body>
+                          <div class="label">
 
-/* SERIAL */
+                            <div class="brand">
+                              <img
+                                src="${logoSrc}"
+                                alt="MicroSolderTech"
+                              />
+                            </div>
 
-.serial-box {
-  margin-top: 0.035in;
-  border: 2px solid #000;
-  border-radius: 5px;
-  min-height: 0.53in;
-  padding: 0.025in 0.03in 0.035in;
-  text-align: center;
-}
+                            <div class="subtitle">
+                              MICROSOLDERING REPAIR CENTER
+                            </div>
 
-.serial-box .badge {
-  margin-top: -0.11in;
-  position: relative;
-}
+                            <div class="top-row">
+                              <div class="top-cell">
+                                <span class="tag">REPAIR ID</span>
+                                <span class="repair-id">
+                                  ${repairId}
+                                </span>
+                              </div>
 
-.serial-value {
-  display: block;
-  margin-top: 2px;
-  font-size: 13pt;
-  line-height: 1;
-  font-weight: 900;
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-}
+                              <div class="top-cell">
+                                <span class="field-label">DATE</span>
+                                <span class="field-value">
+                                  ${repairDate}
+                                </span>
+                              </div>
+                            </div>
 
-/* FOOTER */
+                            <div class="two-col">
+                              <div class="cell">
+                                <span class="field-label">
+                                  CUSTOMER
+                                </span>
+                                <span class="field-value">
+                                  ${customer}
+                                </span>
+                              </div>
 
-.footer {
-  margin-top: auto;
-  text-align: center;
-  border-top: 2px solid #000;
-  padding-top: 0.035in;
-}
+                              <div class="cell">
+                                <span class="field-label">
+                                  PHONE
+                                </span>
+                                <span class="field-value">
+                                  ${phone}
+                                </span>
+                              </div>
+                            </div>
 
-.keep {
-  font-size: 6.8pt;
-  line-height: 1;
-  font-weight: 900;
-}
+                            <div class="full">
+                              <span class="field-label">
+                                DEVICE
+                              </span>
+                              <span class="field-value">
+                                ${device}
+                              </span>
+                            </div>
 
-.website {
-  margin-top: 3px;
-  font-size: 8.2pt;
-  line-height: 1;
-  font-weight: 900;
-}
-</style>
-</head>
+                            <div class="full">
+                              <span class="field-label">
+                                ISSUE
+                              </span>
+                              <span class="field-value">
+                                ${issue}
+                              </span>
+                            </div>
 
-<body>
-<div class="label">
+                            <div class="two-col">
+                              <div class="cell">
+                                <span class="field-label">
+                                  PASSCODE
+                                </span>
+                                <span class="field-value">
+                                  ${passcode}
+                                </span>
+                              </div>
 
-  <div class="brand">
-    <img
-      src="${logoSrc}"
-      alt="MicroSolderTech"
-    />
-  </div>
+                              <div class="cell">
+                                <span class="field-label">
+                                  TECHNICIAN
+                                </span>
+                                <span class="field-value">
+                                  ${technician}
+                                </span>
+                              </div>
+                            </div>
 
-  <div class="subtitle">
-    MICROSOLDERING REPAIR CENTER
-  </div>
+                            <div class="serial-box">
+                              <span class="serial-title">
+                                SERIAL / IMEI
+                              </span>
+                              <span class="serial-value">
+                                ${serial}
+                              </span>
+                            </div>
 
-  <div class="top">
-    <div>
-      <span class="badge">REPAIR ID</span>
-      <span class="repair-number">
-        ${repairId}
-      </span>
-    </div>
+                            <div class="footer">
+                              <div class="keep">
+                                KEEP THIS LABEL WITH THE DEVICE
+                              </div>
 
-    <div>
-      <span class="badge">DATE</span>
-      <span class="date-value">
-        ${repairDate}
-      </span>
-    </div>
-  </div>
+                              <div class="website">
+                                microsoldertech.com
+                              </div>
+                            </div>
 
-  <div class="two">
-    <div>
-      <span class="badge">CUSTOMER</span>
-      <span class="value">
-        ${customer}
-      </span>
-    </div>
+                          </div>
 
-    <div>
-      <span class="badge">PHONE</span>
-      <span class="value">
-        ${phone}
-      </span>
-    </div>
-  </div>
+                          <script>
+                            const startPrint = () => {
+                              setTimeout(() => {
+                                window.print();
+                              }, 350);
+                            };
 
-  <div class="full">
-    <span class="badge">DEVICE</span>
-    <span class="value">
-      ${device}
-    </span>
-  </div>
+                            if (document.fonts?.ready) {
+                              document.fonts.ready.then(startPrint);
+                            } else {
+                              window.onload = startPrint;
+                            }
 
-  <div class="full">
-    <span class="badge">ISSUE</span>
-    <span class="value">
-      ${issue}
-    </span>
-  </div>
-
-  <div class="two">
-    <div>
-      <span class="badge">PASSCODE</span>
-      <span class="value">
-        ${passcode}
-      </span>
-    </div>
-
-    <div>
-      <span class="badge">
-        TECHNICIAN
-      </span>
-      <span class="value">
-        ${technician}
-      </span>
-    </div>
-  </div>
-
-  <div class="serial-box">
-    <span class="badge">
-      SERIAL / IMEI
-    </span>
-
-    <span class="serial-value">
-      ${serial}
-    </span>
-  </div>
-
-  <div class="footer">
-    <div class="keep">
-      KEEP THIS LABEL WITH THE DEVICE
-    </div>
-
-    <div class="website">
-      microsoldertech.com
-    </div>
-  </div>
-
-</div>
-
-<script>
-const startPrint = () => {
-  setTimeout(() => {
-    window.print();
-  }, 350);
-};
-
-if (document.fonts?.ready) {
-  document.fonts.ready.then(startPrint);
-} else {
-  window.onload = startPrint;
-}
-
-window.onafterprint = () => {
-  window.close();
-};
-<\/script>
-
-</body>
-</html>
+                            window.onafterprint = () => {
+                              window.close();
+                            };
+                          <\/script>
+                        </body>
+                      </html>
                     `);
 
                     printWindow.document.close();
