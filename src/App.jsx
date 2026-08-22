@@ -8552,319 +8552,317 @@ function App() {
                     const logoSrc =
                       microsoldertechLogoCropped;
 
+                    const escapeLabelText = (value) =>
+                      String(value ?? "")
+                        .replaceAll("&", "&amp;")
+                        .replaceAll("<", "&lt;")
+                        .replaceAll(">", "&gt;")
+                        .replaceAll('"', "&quot;");
+
                     printWindow.document.open();
 
                     printWindow.document.write(`
-                      <!doctype html>
-                      <html>
-                        <head>
-                          <meta charset="UTF-8" />
-                          <title>Repair Label</title>
+<!doctype html>
+<html>
+<head>
+  <meta charset="UTF-8" />
+  <title>Repair Label</title>
 
-                          <style>
-                            @page {
-                              size: 2.313in 4in;
-                              margin: 0;
-                            }
+  <style>
+    @page {
+      size: 2.313in 4in;
+      margin: 0;
+    }
 
-                            * {
-                              box-sizing: border-box;
-                            }
+    html,
+    body {
+      margin: 0;
+      padding: 0;
+      width: 2.313in;
+      height: 4in;
+      overflow: hidden;
+      background: white;
+    }
 
-                            html,
-                            body {
-                              width: 2.313in;
-                              height: 4in;
-                              margin: 0;
-                              padding: 0;
-                              background: #fff;
-                              color: #000;
-                              overflow: hidden;
-                              font-family: Arial, Helvetica, sans-serif;
-                            }
+    body {
+      display: flex;
+      justify-content: center;
+      align-items: flex-start;
+    }
 
-                            body {
-                              padding: 0.07in;
-                            }
+    svg {
+      display: block;
+      width: 2.25in;
+      height: 4in;
+      overflow: hidden;
+    }
 
-                            .label {
-                              width: 100%;
-                              height: 100%;
-                              display: flex;
-                              flex-direction: column;
-                              background: #fff;
-                            }
+    text {
+      font-family: Arial, Helvetica, sans-serif;
+      fill: #000;
+    }
 
-                            .brand {
-                              display: flex;
-                              justify-content: center;
-                              align-items: center;
-                              height: 0.42in;
-                            }
+    .bold {
+      font-weight: 700;
+    }
 
-                            .brand img {
-                              max-width: 88%;
-                              max-height: 0.34in;
-                              object-fit: contain;
-                            }
+    .heavy {
+      font-weight: 900;
+    }
+  </style>
+</head>
 
-                            .subtitle {
-                              text-align: center;
-                              font-size: 9pt;
-                              font-weight: 800;
-                              padding-bottom: 0.04in;
-                              border-bottom: 2px solid #000;
-                            }
+<body>
 
-                            .top-row {
-                              display: grid;
-                              grid-template-columns: 1fr 0.72fr;
-                              gap: 0;
-                              border-bottom: 2px solid #000;
-                            }
+<svg
+  xmlns="http://www.w3.org/2000/svg"
+  xmlns:xlink="http://www.w3.org/1999/xlink"
+  viewBox="0 0 675 1200"
+  width="675"
+  height="1200"
+>
 
-                            .top-cell {
-                              padding: 0.06in 0.04in;
-                            }
+  <rect width="675" height="1200" fill="white"/>
 
-                            .top-cell + .top-cell {
-                              border-left: 2px solid #000;
-                            }
+  <!-- LOGO -->
+  <image
+    href="${logoSrc}"
+    x="37"
+    y="24"
+    width="600"
+    height="105"
+    preserveAspectRatio="xMidYMid meet"
+  />
 
-                            .tag {
-                              display: inline-block;
-                              background: #000;
-                              color: #fff;
-                              padding: 2px 6px;
-                              font-size: 8pt;
-                              font-weight: 900;
-                              line-height: 1;
-                              margin-bottom: 4px;
-                            }
+  <text
+    x="337"
+    y="150"
+    text-anchor="middle"
+    font-size="21"
+  >
+    MICROSOLDERING REPAIR CENTER
+  </text>
 
-                            .repair-id {
-                              display: block;
-                              font-size: 18pt;
-                              line-height: 1;
-                              font-weight: 900;
-                            }
+  <line x1="28" y1="178" x2="647" y2="178"
+        stroke="black" stroke-width="5"/>
 
-                            .field-label {
-                              display: block;
-                              font-size: 8.5pt;
-                              line-height: 1;
-                              font-weight: 900;
-                              text-transform: uppercase;
-                              margin-bottom: 3px;
-                            }
+  <!-- REPAIR ID / DATE -->
 
-                            .field-value {
-                              display: block;
-                              font-size: 11.5pt;
-                              line-height: 1.08;
-                              font-weight: 800;
-                              word-break: break-word;
-                            }
+  <rect
+    x="30"
+    y="208"
+    width="180"
+    height="42"
+    rx="5"
+    fill="black"
+  />
 
-                            .two-col {
-                              display: grid;
-                              grid-template-columns: 1fr 1fr;
-                              border-bottom: 1.5px solid #000;
-                            }
+  <text
+    x="120"
+    y="237"
+    text-anchor="middle"
+    font-size="18"
+    font-weight="700"
+    fill="white"
+    style="fill:white"
+  >
+    REPAIR ID
+  </text>
 
-                            .cell {
-                              min-height: 0.50in;
-                              padding: 0.06in 0.04in;
-                            }
+  <text
+    x="30"
+    y="330"
+    font-size="52"
+    font-weight="900"
+  >
+    ${escapeLabelText(repairId)}
+  </text>
 
-                            .cell + .cell {
-                              border-left: 1.5px solid #000;
-                            }
+  <line x1="408" y1="200" x2="408" y2="365"
+        stroke="black" stroke-width="4"/>
 
-                            .full {
-                              padding: 0.06in 0.04in;
-                              border-bottom: 1.5px solid #000;
-                            }
+  <text
+    x="445"
+    y="245"
+    font-size="26"
+    font-weight="900"
+  >
+    DATE
+  </text>
 
-                            .full .field-value {
-                              font-size: 12.5pt;
-                            }
+  <text
+    x="445"
+    y="300"
+    font-size="31"
+    font-weight="700"
+  >
+    ${escapeLabelText(repairDate)}
+  </text>
 
-                            .serial-box {
-                              margin-top: 0.05in;
-                              border: 2px solid #000;
-                              border-radius: 5px;
-                              padding: 0.05in;
-                              text-align: center;
-                            }
+  <line x1="28" y1="385" x2="647" y2="385"
+        stroke="black" stroke-width="4"/>
 
-                            .serial-title {
-                              display: inline-block;
-                              background: #000;
-                              color: #fff;
-                              font-size: 8.5pt;
-                              font-weight: 900;
-                              padding: 2px 7px;
-                              margin-bottom: 4px;
-                            }
+  <!-- CUSTOMER / PHONE -->
 
-                            .serial-value {
-                              display: block;
-                              font-size: 14pt;
-                              line-height: 1;
-                              font-weight: 900;
-                              word-break: break-all;
-                            }
+  <text x="36" y="435" font-size="26" font-weight="900">
+    CUSTOMER
+  </text>
 
-                            .footer {
-                              margin-top: auto;
-                              padding-top: 0.04in;
-                              border-top: 2px solid #000;
-                              text-align: center;
-                            }
+  <text x="36" y="495" font-size="40" font-weight="700">
+    ${escapeLabelText(customer)}
+  </text>
 
-                            .keep {
-                              font-size: 8.5pt;
-                              font-weight: 900;
-                              line-height: 1.1;
-                            }
+  <line x1="338" y1="385" x2="338" y2="540"
+        stroke="black" stroke-width="3"/>
 
-                            .website {
-                              margin-top: 3px;
-                              font-size: 10pt;
-                              font-weight: 900;
-                            }
-                          </style>
-                        </head>
+  <text x="365" y="435" font-size="26" font-weight="900">
+    PHONE
+  </text>
 
-                        <body>
-                          <div class="label">
+  <text x="365" y="495" font-size="34" font-weight="700">
+    ${escapeLabelText(phone)}
+  </text>
 
-                            <div class="brand">
-                              <img
-                                src="${logoSrc}"
-                                alt="MicroSolderTech"
-                              />
-                            </div>
+  <line x1="28" y1="545" x2="647" y2="545"
+        stroke="black" stroke-width="3"/>
 
-                            <div class="subtitle">
-                              MICROSOLDERING REPAIR CENTER
-                            </div>
+  <!-- DEVICE FULL WIDTH -->
 
-                            <div class="top-row">
-                              <div class="top-cell">
-                                <span class="tag">REPAIR ID</span>
-                                <span class="repair-id">
-                                  ${repairId}
-                                </span>
-                              </div>
+  <text x="36" y="595" font-size="26" font-weight="900">
+    DEVICE
+  </text>
 
-                              <div class="top-cell">
-                                <span class="field-label">DATE</span>
-                                <span class="field-value">
-                                  ${repairDate}
-                                </span>
-                              </div>
-                            </div>
+  <text x="36" y="655" font-size="42" font-weight="700">
+    ${escapeLabelText(device)}
+  </text>
 
-                            <div class="two-col">
-                              <div class="cell">
-                                <span class="field-label">
-                                  CUSTOMER
-                                </span>
-                                <span class="field-value">
-                                  ${customer}
-                                </span>
-                              </div>
+  <line x1="28" y1="690" x2="647" y2="690"
+        stroke="black" stroke-width="3"/>
 
-                              <div class="cell">
-                                <span class="field-label">
-                                  PHONE
-                                </span>
-                                <span class="field-value">
-                                  ${phone}
-                                </span>
-                              </div>
-                            </div>
+  <!-- ISSUE FULL WIDTH -->
 
-                            <div class="full">
-                              <span class="field-label">
-                                DEVICE
-                              </span>
-                              <span class="field-value">
-                                ${device}
-                              </span>
-                            </div>
+  <text x="36" y="740" font-size="26" font-weight="900">
+    ISSUE
+  </text>
 
-                            <div class="full">
-                              <span class="field-label">
-                                ISSUE
-                              </span>
-                              <span class="field-value">
-                                ${issue}
-                              </span>
-                            </div>
+  <text x="36" y="800" font-size="40" font-weight="700">
+    ${escapeLabelText(issue)}
+  </text>
 
-                            <div class="two-col">
-                              <div class="cell">
-                                <span class="field-label">
-                                  PASSCODE
-                                </span>
-                                <span class="field-value">
-                                  ${passcode}
-                                </span>
-                              </div>
+  <line x1="28" y1="835" x2="647" y2="835"
+        stroke="black" stroke-width="3"/>
 
-                              <div class="cell">
-                                <span class="field-label">
-                                  TECHNICIAN
-                                </span>
-                                <span class="field-value">
-                                  ${technician}
-                                </span>
-                              </div>
-                            </div>
+  <!-- PASSCODE / TECHNICIAN -->
 
-                            <div class="serial-box">
-                              <span class="serial-title">
-                                SERIAL / IMEI
-                              </span>
-                              <span class="serial-value">
-                                ${serial}
-                              </span>
-                            </div>
+  <text x="36" y="885" font-size="26" font-weight="900">
+    PASSCODE
+  </text>
 
-                            <div class="footer">
-                              <div class="keep">
-                                KEEP THIS LABEL WITH THE DEVICE
-                              </div>
+  <text x="36" y="940" font-size="38" font-weight="700">
+    ${escapeLabelText(passcode)}
+  </text>
 
-                              <div class="website">
-                                microsoldertech.com
-                              </div>
-                            </div>
+  <line x1="338" y1="835" x2="338" y2="970"
+        stroke="black" stroke-width="3"/>
 
-                          </div>
+  <text x="365" y="885" font-size="26" font-weight="900">
+    TECHNICIAN
+  </text>
 
-                          <script>
-                            const startPrint = () => {
-                              setTimeout(() => {
-                                window.print();
-                              }, 350);
-                            };
+  <text x="365" y="940" font-size="34" font-weight="700">
+    ${escapeLabelText(technician)}
+  </text>
 
-                            if (document.fonts?.ready) {
-                              document.fonts.ready.then(startPrint);
-                            } else {
-                              window.onload = startPrint;
-                            }
+  <!-- SERIAL / IMEI -->
 
-                            window.onafterprint = () => {
-                              window.close();
-                            };
-                          <\/script>
-                        </body>
-                      </html>
+  <rect
+    x="28"
+    y="985"
+    width="619"
+    height="125"
+    rx="10"
+    fill="none"
+    stroke="black"
+    stroke-width="4"
+  />
+
+  <rect
+    x="205"
+    y="965"
+    width="265"
+    height="47"
+    rx="5"
+    fill="black"
+  />
+
+  <text
+    x="337"
+    y="997"
+    text-anchor="middle"
+    font-size="24"
+    font-weight="900"
+    fill="white"
+    style="fill:white"
+  >
+    SERIAL / IMEI
+  </text>
+
+  <text
+    x="337"
+    y="1070"
+    text-anchor="middle"
+    font-size="42"
+    font-weight="900"
+  >
+    ${escapeLabelText(serial)}
+  </text>
+
+  <!-- FOOTER -->
+
+  <line x1="28" y1="1125" x2="647" y2="1125"
+        stroke="black" stroke-width="4"/>
+
+  <text
+    x="337"
+    y="1155"
+    text-anchor="middle"
+    font-size="23"
+    font-weight="900"
+  >
+    KEEP THIS LABEL WITH THE DEVICE
+  </text>
+
+  <line x1="28" y1="1170" x2="647" y2="1170"
+        stroke="black" stroke-width="3"/>
+
+  <text
+    x="337"
+    y="1195"
+    text-anchor="middle"
+    font-size="25"
+    font-weight="900"
+  >
+    microsoldertech.com
+  </text>
+
+</svg>
+
+<script>
+  const doPrint = () => {
+    setTimeout(() => window.print(), 350);
+  };
+
+  if (document.fonts?.ready) {
+    document.fonts.ready.then(doPrint);
+  } else {
+    window.onload = doPrint;
+  }
+
+  window.onafterprint = () => window.close();
+<\/script>
+
+</body>
+</html>
                     `);
 
                     printWindow.document.close();
